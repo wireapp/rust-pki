@@ -45,9 +45,6 @@ use crate::get_check_crldp_http;
 #[cfg(feature = "remote")]
 use crate::get_check_ocsp_from_aia;
 
-#[cfg(not(feature = "std"))]
-use core::ops::Deref;
-
 /// check_revocation is top level revocation checking function supports a variety of revocation status
 /// determination mechanisms, including allowlist, blocklist, CRLs and OCSP responses. Assuming all options
 /// are enabled, the order of priority is:
@@ -312,7 +309,7 @@ pub fn check_revocation(
     // save up the statuses and return Ok only if none are RevocationStatusNotDetermined
     let mut statuses = vec![];
     for (pos, ca_cert_ref) in v.iter().enumerate() {
-        let cur_cert = ca_cert_ref.deref();
+        let cur_cert = ca_cert_ref;
         let cur_cert_subject = name_to_string(&ca_cert_ref.decoded_cert.tbs_certificate.subject);
         let revoked_error = if pos == max_index {
             CertificateRevokedEndEntity

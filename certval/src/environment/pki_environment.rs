@@ -74,34 +74,19 @@ pub struct PkiEnvironment {
     //Storage and retrieval interfaces
     //--------------------------------------------------------------------------
     /// List of trait objects that provide access to trust anchors
-    #[cfg(feature = "std")]
     trust_anchor_sources: Vec<Box<(dyn TrustAnchorSource + Send + Sync)>>,
-    #[cfg(not(feature = "std"))]
-    trust_anchor_sources: Vec<Box<(dyn TrustAnchorSource)>>,
 
     /// List of trait objects that provide access to certificates
-    #[cfg(feature = "std")]
     certificate_sources: Vec<Box<(dyn CertificateSource + Send + Sync)>>,
-    #[cfg(not(feature = "std"))]
-    certificate_sources: Vec<Box<(dyn CertificateSource)>>,
 
     /// List of trait objects that provide access to CRLs
-    #[cfg(feature = "std")]
     crl_sources: Vec<Box<(dyn CrlSource + Send + Sync)>>,
-    #[cfg(not(feature = "std"))]
-    crl_sources: Vec<Box<(dyn CrlSource)>>,
 
     /// List of trait objects that provide access to cached revocation status determinations
-    #[cfg(feature = "std")]
     revocation_cache: Vec<Box<(dyn RevocationStatusCache + Send + Sync)>>,
-    #[cfg(not(feature = "std"))]
-    revocation_cache: Vec<Box<(dyn RevocationStatusCache)>>,
 
     /// List of trait objects that provide access to blocklist and last modified info
-    #[cfg(feature = "std")]
     check_remote: Vec<Box<(dyn CheckRemoteResource + Send + Sync)>>,
-    #[cfg(not(feature = "std"))]
-    check_remote: Vec<Box<(dyn CheckRemoteResource)>>,
 
     //--------------------------------------------------------------------------
     //Miscellaneous interfaces
@@ -283,14 +268,7 @@ impl PkiEnvironment {
     }
 
     /// add_trust_anchor_source adds a [`TrustAnchorSource`] object to the list used by get_trust_anchor.
-    #[cfg(feature = "std")]
     pub fn add_trust_anchor_source(&mut self, c: Box<(dyn TrustAnchorSource + Send + Sync)>) {
-        self.trust_anchor_sources.push(c);
-    }
-
-    /// add_trust_anchor_source adds a [`TrustAnchorSource`] object to the list used by get_trust_anchor.
-    #[cfg(not(feature = "std"))]
-    pub fn add_trust_anchor_source(&mut self, c: Box<(dyn TrustAnchorSource)>) {
         self.trust_anchor_sources.push(c);
     }
 
@@ -370,14 +348,7 @@ impl PkiEnvironment {
     }
 
     /// add_certificate_source adds a [`CertificateSource`] object to the list.
-    #[cfg(feature = "std")]
     pub fn add_certificate_source(&mut self, c: Box<(dyn CertificateSource + Send + Sync)>) {
-        self.certificate_sources.push(c);
-    }
-
-    /// add_certificate_source adds a [`CertificateSource`] object to the list.
-    #[cfg(not(feature = "std"))]
-    pub fn add_certificate_source(&mut self, c: Box<(dyn CertificateSource)>) {
         self.certificate_sources.push(c);
     }
 
@@ -387,14 +358,7 @@ impl PkiEnvironment {
     }
 
     /// add_crl_source adds a [`CrlSource`] object to the list.
-    #[cfg(feature = "std")]
     pub fn add_crl_source(&mut self, c: Box<(dyn CrlSource + Send + Sync)>) {
-        self.crl_sources.push(c);
-    }
-
-    /// add_crl_source adds a [`CrlSource`] object to the list.
-    #[cfg(not(feature = "std"))]
-    pub fn add_crl_source(&mut self, c: Box<(dyn CrlSource)>) {
         self.crl_sources.push(c);
     }
 
@@ -434,14 +398,7 @@ impl PkiEnvironment {
     }
 
     /// add_revocation_cache adds a [`RevocationStatusCache`] object to the list.
-    #[cfg(feature = "std")]
     pub fn add_revocation_cache(&mut self, c: Box<(dyn RevocationStatusCache + Send + Sync)>) {
-        self.revocation_cache.push(c);
-    }
-
-    /// add_revocation_cache adds a [`RevocationStatusCache`] object to the list.
-    #[cfg(not(feature = "std"))]
-    pub fn add_revocation_cache(&mut self, c: Box<(dyn RevocationStatusCache)>) {
         self.revocation_cache.push(c);
     }
 
@@ -515,14 +472,7 @@ impl PkiEnvironment {
     }
 
     /// add_check_remote adds a [`CheckRemoteResource`] object to the list.
-    #[cfg(feature = "std")]
     pub fn add_check_remote(&mut self, c: Box<(dyn CheckRemoteResource + Send + Sync)>) {
-        self.check_remote.push(c);
-    }
-
-    /// add_check_remote adds a [`CheckRemoteResource`] object to the list.
-    #[cfg(not(feature = "std"))]
-    pub fn add_check_remote(&mut self, c: Box<(dyn CheckRemoteResource)>) {
         self.check_remote.push(c);
     }
 

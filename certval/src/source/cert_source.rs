@@ -322,12 +322,7 @@ pub struct BuffersAndPaths {
     pub buffers: Vec<CertFile>,
 
     /// Maps skid of leaf CA (i.e., last index in each vector) to a vector of indices into buffers
-    #[cfg(feature = "std")]
     pub partial_paths: Arc<Mutex<RefCell<PartialPaths>>>,
-
-    /// Maps skid of leaf CA (i.e., last index in each vector) to a vector of indices into buffers
-    #[cfg(not(feature = "std"))]
-    pub partial_paths: RefCell<PartialPaths>,
 }
 
 /// Type used to represent partial certification paths in [`BuffersAndPaths`] struct
@@ -347,10 +342,7 @@ impl BuffersAndPaths {
     pub fn new() -> BuffersAndPaths {
         BuffersAndPaths {
             buffers: Vec::new(),
-            #[cfg(feature = "std")]
             partial_paths: Arc::new(Mutex::new(RefCell::new(Vec::new()))),
-            #[cfg(not(feature = "std"))]
-            partial_paths: RefCell::new(Vec::new()),
         }
     }
 }
@@ -480,7 +472,6 @@ impl CertSource {
     }
 
     /// Clear list of partial paths
-    #[cfg(feature = "std")]
     pub fn clear_paths(&self) {
         let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
@@ -596,17 +587,12 @@ impl CertSource {
 
     /// Log partial path details to PkiEnvironment's logging mechanism at debug level.
     pub fn log_partial_paths(&self) {
-        #[cfg(feature = "std")]
         let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
         } else {
             return;
         };
-        #[cfg(feature = "std")]
         let partial_paths = partial_paths_guard.deref().borrow();
-
-        #[cfg(not(feature = "std"))]
-        let partial_paths = &self.buffers_and_paths.partial_paths.borrow();
 
         if partial_paths.is_empty() {
             info!("No partial paths available");
@@ -672,17 +658,12 @@ impl CertSource {
             return;
         }
 
-        #[cfg(feature = "std")]
         let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
         } else {
             return;
         };
-        #[cfg(feature = "std")]
         let partial_paths = partial_paths_guard.deref().borrow();
-
-        #[cfg(not(feature = "std"))]
-        let partial_paths = &self.buffers_and_paths.partial_paths.borrow();
 
         if partial_paths.is_empty() {
             if self.certs.is_empty() {
@@ -819,17 +800,12 @@ impl CertSource {
 
     /// Logs info about partial paths and corresponding buffers for a given target
     pub fn log_paths_for_leaf_ca(&self, target: &PDVCertificate) {
-        #[cfg(feature = "std")]
         let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
         } else {
             return;
         };
-        #[cfg(feature = "std")]
         let partial_paths = partial_paths_guard.deref().borrow();
-
-        #[cfg(not(feature = "std"))]
-        let partial_paths = &self.buffers_and_paths.partial_paths.borrow();
 
         if partial_paths.is_empty() {
             if self.certs.is_empty() {
@@ -926,17 +902,12 @@ impl CertSource {
 
         let mut ppcounter = 0;
 
-        #[cfg(feature = "std")]
         let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
         } else {
             return Err(Error::Unrecognized);
         };
-        #[cfg(feature = "std")]
         let partial_paths = partial_paths_guard.deref().borrow();
-
-        #[cfg(not(feature = "std"))]
-        let partial_paths = &self.buffers_and_paths.partial_paths.borrow();
 
         for outer in partial_paths.iter() {
             for key in outer.keys() {
@@ -978,17 +949,12 @@ impl CertSource {
             ta_vec = tav;
         }
 
-        #[cfg(feature = "std")]
         let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
             g
         } else {
             return;
         };
-        #[cfg(feature = "std")]
         let mut partial_paths = partial_paths_guard.deref().borrow_mut();
-
-        #[cfg(not(feature = "std"))]
-        let mut partial_paths = self.buffers_and_paths.partial_paths.borrow_mut();
 
         partial_paths.clear();
 
@@ -1488,10 +1454,7 @@ impl CertificateSource for CertSource {
                 } else {
                     return Err(Error::Unrecognized);
                 };
-                #[cfg(feature = "std")]
                 let partial_paths = partial_paths_guard.deref().borrow();
-                #[cfg(not(feature = "std"))]
-                let partial_paths = &self.buffers_and_paths.partial_paths.borrow();
 
                 for p in partial_paths.iter() {
                     if p.contains_key(&akid_hex) {
