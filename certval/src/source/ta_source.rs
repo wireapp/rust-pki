@@ -29,11 +29,9 @@ use alloc::{vec, vec::Vec};
 use core::str;
 use log::{error, info, warn};
 
-#[cfg(feature = "std")]
 use alloc::sync::Arc;
 use ciborium::from_reader;
 use core::cell::RefCell;
-#[cfg(feature = "std")]
 use std::sync::Mutex;
 
 #[cfg(feature = "webpki")]
@@ -297,7 +295,6 @@ impl TaSource {
     /// index_tas builds internally used maps based on key identifiers and names. It must be called
     /// after populating the `tas` and `buffers` fields and before use.
     pub fn index_tas(&self) {
-        #[cfg(feature = "std")]
         let skid_map_guard = if let Ok(g) = self.skid_map.lock() {
             g
         } else {

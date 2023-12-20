@@ -33,7 +33,6 @@ use alloc::{
     string::{String, ToString},
 };
 use alloc::{format, vec, vec::Vec};
-use core::cell::RefCell;
 
 use log::{debug, error, info};
 
@@ -68,14 +67,9 @@ use crate::{
     PS_MAX_PATH_LENGTH_CONSTRAINT,
 };
 
-#[cfg(feature = "std")]
-use core::ops::Deref;
-
-#[cfg(feature = "std")]
-use alloc::sync::Arc;
 use ciborium::from_reader;
-#[cfg(feature = "std")]
-use std::sync::Mutex;
+
+use std::sync::{Arc, RwLock};
 
 /// The CertFile struct associates a string, notionally containing a filename or URI, with a vector
 /// of bytes. The vector of bytes is assumed to contain a binary DER encoded certificate.
@@ -322,7 +316,7 @@ pub struct BuffersAndPaths {
     pub buffers: Vec<CertFile>,
 
     /// Maps skid of leaf CA (i.e., last index in each vector) to a vector of indices into buffers
-    pub partial_paths: Arc<Mutex<RefCell<PartialPaths>>>,
+    pub partial_paths: Arc<RwLock<PartialPaths>>,
 }
 
 /// Type used to represent partial certification paths in [`BuffersAndPaths`] struct
@@ -342,7 +336,7 @@ impl BuffersAndPaths {
     pub fn new() -> BuffersAndPaths {
         BuffersAndPaths {
             buffers: Vec::new(),
-            partial_paths: Arc::new(Mutex::new(RefCell::new(Vec::new()))),
+            partial_paths: Arc::new(RwLock::new(Vec::new())),
         }
     }
 }
@@ -473,12 +467,12 @@ impl CertSource {
 
     /// Clear list of partial paths
     pub fn clear_paths(&self) {
-        let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let mut partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.write() {
             g
         } else {
             return;
         };
-        partial_paths.deref().borrow_mut().clear();
+        partial_paths.clear();
     }
 
     /// Create new instance from CBOR
@@ -587,12 +581,11 @@ impl CertSource {
 
     /// Log partial path details to PkiEnvironment's logging mechanism at debug level.
     pub fn log_partial_paths(&self) {
-        let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
             g
         } else {
             return;
         };
-        let partial_paths = partial_paths_guard.deref().borrow();
 
         if partial_paths.is_empty() {
             info!("No partial paths available");
@@ -658,12 +651,11 @@ impl CertSource {
             return;
         }
 
-        let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
             g
         } else {
             return;
         };
-        let partial_paths = partial_paths_guard.deref().borrow();
 
         if partial_paths.is_empty() {
             if self.certs.is_empty() {
@@ -800,12 +792,11 @@ impl CertSource {
 
     /// Logs info about partial paths and corresponding buffers for a given target
     pub fn log_paths_for_leaf_ca(&self, target: &PDVCertificate) {
-        let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
             g
         } else {
             return;
         };
-        let partial_paths = partial_paths_guard.deref().borrow();
 
         if partial_paths.is_empty() {
             if self.certs.is_empty() {
@@ -902,12 +893,11 @@ impl CertSource {
 
         let mut ppcounter = 0;
 
-        let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
             g
         } else {
             return Err(Error::Unrecognized);
         };
-        let partial_paths = partial_paths_guard.deref().borrow();
 
         for outer in partial_paths.iter() {
             for key in outer.keys() {
@@ -922,10 +912,7 @@ impl CertSource {
         );
 
         // drop mutex so serde can claim it
-        #[cfg(feature = "std")]
         std::mem::drop(partial_paths);
-        #[cfg(feature = "std")]
-        std::mem::drop(partial_paths_guard);
 
         let mut buffer = Vec::new();
         let r = into_writer(&self.buffers_and_paths, &mut buffer);
@@ -949,12 +936,11 @@ impl CertSource {
             ta_vec = tav;
         }
 
-        let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock() {
+        let mut partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.write() {
             g
         } else {
             return;
         };
-        let mut partial_paths = partial_paths_guard.deref().borrow_mut();
 
         partial_paths.clear();
 
@@ -1447,14 +1433,11 @@ impl CertificateSource for CertSource {
         while ii < 2 {
             ii += 1;
             if !akid_hex.is_empty() {
-                #[cfg(feature = "std")]
-                let partial_paths_guard = if let Ok(g) = self.buffers_and_paths.partial_paths.lock()
-                {
+                let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
                     g
                 } else {
                     return Err(Error::Unrecognized);
                 };
-                let partial_paths = partial_paths_guard.deref().borrow();
 
                 for p in partial_paths.iter() {
                     if p.contains_key(&akid_hex) {
