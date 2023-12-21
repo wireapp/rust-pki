@@ -40,7 +40,7 @@ use alloc::{vec, vec::Vec};
 
 use der::asn1::ObjectIdentifier;
 use spki::{AlgorithmIdentifierOwned, SubjectPublicKeyInfoOwned};
-use x509_cert::{certificate::Raw, crl::CertificateList};
+use x509_cert::{certificate::Raw, crl::CertificateList, name::Name};
 
 use crate::PathValidationStatus::RevocationStatusNotDetermined;
 use crate::{
@@ -325,6 +325,27 @@ impl PkiEnvironment {
             }
         }
         Err(Error::Unrecognized)
+    }
+
+    /// Retrieves a trust anchor for a given Name
+    pub fn get_trust_anchor_by_name(&'_ self, name: &Name) -> Result<&PDVTrustAnchorChoice> {
+        for f in &self.trust_anchor_sources {
+            if let Ok(r) = f.get_trust_anchor_by_name(name) {
+                return Ok(r);
+            }
+        }
+
+        Err(Error::Unrecognized)
+    }
+
+    /// Retrieves a set of certificates from certificate sources (i.e. intermediate CAs) matching a certain name
+    pub fn get_cert_by_name(&'_ self, name: &Name) -> Vec<&PDVCertificate> {
+        self.certificate_sources.iter().fold(vec![], |mut acc, f| {
+            if let Ok(mut r) = f.get_certificates_for_name(name) {
+                acc.append(&mut r);
+            }
+            acc
+        })
     }
 
     /// is_cert_a_trust_anchor takes a target certificate indication if cert is a trust anchor.
