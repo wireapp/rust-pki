@@ -32,6 +32,7 @@ pkiprocmacros = { path = "../pkiprocmacros"}
 ecdsa = {version = "0.17.0-pre.7", default-features = false, features = ["der"]}
 p256 = {version = "0.14.0-pre.1", default-features = false, features = ["ecdsa", "ecdsa-core"]}
 p384 = {version = "0.14.0-pre.1", default-features = false, features = ["ecdsa"]}
+ed25519-dalek = { version = "2.2.0-pre", default-features = false, features = ["fast", "zeroize", "pkcs8"] }
 rsa = {version = "0.10.0-pre.2", default-features = false}
 sha1 = {version = "0.11.0-pre.4", default-features = false}
 sha2 = {version = "0.11.0-pre.4", default-features = false, features = ["oid"] }
@@ -84,7 +85,7 @@ tokio-test = "0.4.2"
 [features]
 default = ["remote", "webpki"]
 revocation = ["ndarray", "serde/std", "serde/rc"]
-std = ["ndarray", "tokio", "base64ct", "walkdir", "url", "serde_json", "serde/rc",  "flagset/serde", "regex", "lazy_static/spin", "bitvec", "cidr", "der/std"]
+std = ["ndarray", "tokio", "base64ct", "walkdir", "ed25519-dalek/std", "url", "serde_json", "serde/rc",  "flagset/serde", "regex", "lazy_static/spin", "bitvec", "cidr", "der/std"]
 remote = ["revocation", "std", "reqwest", "lazy_static/spin"]
 pqc = ["pqcrypto-internals", "pqcrypto-dilithium", "pqcrypto-falcon", "pqcrypto-sphincsplus", "pqcrypto", "pqcrypto-traits", "pqckeys"]
 webpki = ["webpki-roots"]
