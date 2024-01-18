@@ -69,6 +69,10 @@ pub(crate) fn is_ecdsa(oid: &ObjectIdentifier) -> bool {
         || *oid == PKIXALG_ECDSA_WITH_SHA512
 }
 
+pub(crate) fn is_eddsa(oid: &ObjectIdentifier) -> bool {
+    *oid == PKIXALG_ED25519
+}
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_ml_dsa_44_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == ML_DSA_44_IPD
@@ -208,10 +212,10 @@ pub fn verify_signature_digest_rust_crypto(
 
 fn get_named_curve_parameter(alg_id: &AlgorithmIdentifierOwned) -> Result<ObjectIdentifier> {
     if let Some(params) = &alg_id.parameters {
-        //todo unwrap
-        let ar: AnyRef<'_> = params.try_into().unwrap();
-        if let Ok(oid) = ObjectIdentifier::try_from(ar) {
-            return Ok(oid);
+        if let Ok(ar) = TryInto::<AnyRef<'_>>::try_into(params) {
+            if let Ok(oid) = ObjectIdentifier::try_from(ar) {
+                return Ok(oid);
+            }
         }
     }
     Err(Error::PathValidation(PathValidationStatus::EncodingError))
@@ -258,8 +262,8 @@ pub fn verify_signature_message_rust_crypto(
         };
         macro_rules! verify_with_ecdsa {
             ($crypto_root:ident) => {{
-                use ::ecdsa::signature::hazmat::PrehashVerifier;
-                use ::$crypto_root::ecdsa;
+                use ecdsa::signature::hazmat::PrehashVerifier;
+                use $crypto_root::ecdsa;
                 let verifying_key =
                     ecdsa::VerifyingKey::from_sec1_bytes(spki.subject_public_key.raw_bytes())
                         .map_err(|_err| {
@@ -290,7 +294,25 @@ pub fn verify_signature_message_rust_crypto(
                 Err(Error::Unrecognized)
             }
         };
+    } else if is_eddsa(&signature_alg.oid) {
+        let Ok(verifying_key) =
+            ed25519_dalek::VerifyingKey::try_from(spki.subject_public_key.raw_bytes())
+        else {
+            error!("Could not decode verifying key");
+            return Err(Error::PathValidation(PathValidationStatus::EncodingError));
+        };
+        let Ok(s) = ed25519_dalek::Signature::from_slice(signature) else {
+            error!("Could not decode signature");
+            return Err(Error::PathValidation(PathValidationStatus::EncodingError));
+        };
+        verifying_key
+            .verify_strict(message_to_verify, &s)
+            .map_err(|_| {
+                Error::PathValidation(PathValidationStatus::SignatureVerificationFailure)
+            })?;
+        return Ok(());
     }
+
     debug!("Unrecognized signature algorithm: {}", signature_alg.oid);
     Err(Error::Unrecognized)
 }
