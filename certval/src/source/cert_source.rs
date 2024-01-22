@@ -965,7 +965,7 @@ impl CertSource {
 
     /// index_certs prepares internally used key identifier and name maps after the caller has modified
     /// the buffers_and_paths and certs fields.
-    fn index_certs(&mut self) {
+    pub fn index_certs(&mut self) {
         for (i, cert) in self.certs.iter().enumerate() {
             if let Some(cert) = cert {
                 let hex_skid = hex_skid_from_cert(cert);
@@ -1531,9 +1531,9 @@ impl CertificateSource for CertSource {
     fn get_certificates_for_skid(&self, skid: &[u8]) -> Result<Vec<&PDVCertificate>> {
         let hex_skid = buffer_to_hex(skid);
         let mut retval = vec![];
-        if self.skid_map.contains_key(hex_skid.as_str()) {
-            for i in &self.skid_map[&hex_skid] {
-                if let Some(cert) = &self.certs[*i] {
+        if let Some(skid_map) = self.skid_map.get(hex_skid.as_str()) {
+            for i in skid_map {
+                if let Some(Some(cert)) = &self.certs.get(*i) {
                     retval.push(cert);
                 }
             }
@@ -1549,9 +1549,9 @@ impl CertificateSource for CertSource {
     fn get_certificates_for_name(&self, name: &Name) -> Result<Vec<&PDVCertificate>> {
         let name_str = name_to_string(name);
         let mut retval = vec![];
-        if self.name_map.contains_key(name_str.as_str()) {
-            for i in &self.name_map[&name_str] {
-                if let Some(cert) = &self.certs[*i] {
+        if let Some(name_map) = self.name_map.get(name_str.as_str()) {
+            for i in name_map {
+                if let Some(Some(cert)) = &self.certs.get(*i) {
                     retval.push(cert);
                 }
             }
