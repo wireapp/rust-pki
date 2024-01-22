@@ -859,9 +859,8 @@ fn verify_crl(
     issuer_cert: &Certificate,
     cpr: &mut CertificationPathResults,
 ) -> Result<()> {
-    let defer_crl = match DeferDecodeSigned::from_der(crl_buf) {
-        Ok(crl) => crl,
-        Err(_e) => return Err(Error::Unrecognized),
+    let Ok(defer_crl) = DeferDecodeSigned::from_der(crl_buf) else {
+        return Err(Error::Unrecognized);
     };
 
     let r = pe.verify_signature_message(
