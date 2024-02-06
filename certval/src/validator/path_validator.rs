@@ -112,7 +112,7 @@ pub fn validate_path_rfc5280(
 /// It uses values from the [`PS_INITIAL_PATH_LENGTH_CONSTRAINT`] item in the [`CertificationPathSettings`]
 /// and the path_len_constraint field of basicConstraints extensions.
 pub fn check_basic_constraints(
-    _pe: &PkiEnvironment,
+    pe: &PkiEnvironment,
     cps: &CertificationPathSettings,
     cp: &mut CertificationPath,
     cpr: &mut CertificationPathResults,
@@ -179,6 +179,33 @@ pub fn check_basic_constraints(
             //       less than max_path_length, set max_path_length to the value
             //       of pathLenConstraint.
             path_len_constraint = path_len_constraint.min(pl);
+        }
+    }
+
+    if get_forbid_self_signed_ee(cps) {
+        let pdv_ext: Option<&PDVExtension> = cp.target.get_extension(&ID_CE_BASIC_CONSTRAINTS)?;
+        let bc = match pdv_ext {
+            Some(PDVExtension::BasicConstraints(bc)) => bc,
+            _ => {
+                log_error_for_ca(&cp.target, "missing basic constraints");
+                set_validation_status(cpr, PathValidationStatus::MissingBasicConstraints);
+                return Err(Error::PathValidation(
+                    PathValidationStatus::MissingBasicConstraints,
+                ));
+            }
+        };
+
+        let is_ee = !bc.ca;
+
+        if is_ee && is_self_signed(pe, &cp.target) {
+            log_error_for_ca(
+                &cp.target,
+                "End-identity certificate is self-signed, but it is forbidden",
+            );
+            set_validation_status(cpr, PathValidationStatus::SelfSignedEndIdentity);
+            return Err(Error::PathValidation(
+                PathValidationStatus::SelfSignedEndIdentity,
+            ));
         }
     }
 

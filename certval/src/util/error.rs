@@ -85,6 +85,8 @@ pub enum PathValidationStatus {
     RevocationStatusNotAvailable,
     /// A configuration error was detected. See textual log output for more details.
     Misconfiguration,
+    /// An End-Identity certificate was self-signed, but it is forbidden
+    SelfSignedEndIdentity,
 }
 
 /// Error type
@@ -183,6 +185,7 @@ impl fmt::Display for PathValidationStatus {
                 write!(f, "RevocationStatusNotAvailable")
             }
             PathValidationStatus::Misconfiguration => write!(f, "Misconfiguration"),
+            PathValidationStatus::SelfSignedEndIdentity => write!(f, "SelfSignedEndIdentity"),
         }
     }
 }
