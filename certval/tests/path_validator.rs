@@ -138,3 +138,38 @@ fn is_trust_anchor_test() {
     let ta = PDVTrustAnchorChoice::try_from(der_encoded_ta.as_slice()).unwrap();
     assert!(pe.is_trust_anchor(&ta).is_ok());
 }
+
+#[test]
+fn denies_self_signed_ee() {
+    let mut pe = PkiEnvironment::default();
+    let ta_source = TaSource::default();
+    let cert_source = CertSource::default();
+    pe.add_trust_anchor_source(Box::new(ta_source.clone()));
+    pe.add_certificate_source(Box::new(cert_source.clone()));
+
+    populate_5280_pki_environment(&mut pe);
+
+    let pem_encoded_cert = include_bytes!("../tests/examples/ee_alice_ss_test.pem");
+    use der::DecodePem as _;
+    let cert = x509_cert::Certificate::from_pem(pem_encoded_cert).unwrap();
+    let cert = PDVCertificate::try_from(cert).unwrap();
+
+    let mut cps = CertificationPathSettings::default();
+    set_forbid_self_signed_ee(&mut cps, true);
+    let mut paths = vec![];
+    pe.get_paths_for_target(&pe, &cert, &mut paths, 0, get_time_of_interest(&cps))
+        .unwrap();
+
+    if paths.is_empty() {
+        return;
+    }
+
+    for path in &mut paths {
+        let mut cpr = CertificationPathResults::new();
+        if validate_path_rfc5280(&pe, &cps, path, &mut cpr).is_err() {
+            return;
+        }
+    }
+
+    panic!("EE cert was accepted");
+}
