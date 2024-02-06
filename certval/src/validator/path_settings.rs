@@ -354,6 +354,8 @@ pub static PS_CBOR_TA_STORE: &str = "psCborTaStore";
 pub static PS_REQUIRE_TA_STORE: &str = "psRequireTaStore";
 /// PS_USE_POLICY_GRAPH is used to indicate that the validator should use policy graph-based certificate policy processing.
 pub static PS_USE_POLICY_GRAPH: &str = "psUsePolicyGraph";
+/// PS_FORBID_SELF_SIGNED_EE is used to forbid allowing self-signed end-identity certificates
+pub static PS_FORBID_SELF_SIGNED_EE: &str = "psForbidSelfSignedEE";
 
 //-----------------------------------------------------------------------------------------------
 // Getters/setters for settings
@@ -711,6 +713,7 @@ cps_gets_and_sets!(PS_PERM_COUNTRIES, Strings);
 cps_gets_and_sets!(PS_EXCL_COUNTRIES, Strings);
 cps_gets_and_sets_with_default!(PS_REQUIRE_TA_STORE, bool, true);
 cps_gets_and_sets_with_default!(PS_USE_POLICY_GRAPH, bool, false);
+cps_gets_and_sets_with_default!(PS_FORBID_SELF_SIGNED_EE, bool, false);
 
 /// `get_target_key_usage` retrieves the `PS_KEY_USAGE` value from a
 /// [`CertificationPathSettings`] map. If present, a u8 value is returned, else None is returned.
