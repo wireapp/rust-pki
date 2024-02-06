@@ -55,18 +55,15 @@ pub fn is_self_signed_with_buffer(
     enc_cert: &[u8],
 ) -> bool {
     match DeferDecodeSigned::from_der(enc_cert) {
-        Ok(defer_cert) => {
-            let r = pe.verify_signature_message(
+        Ok(defer_cert) => pe
+            .verify_signature_message(
                 pe,
                 &defer_cert.tbs_field,
                 cert.signature.raw_bytes(),
                 &cert.tbs_certificate.signature,
                 &cert.tbs_certificate.subject_public_key_info,
-            );
-            //TODO is it worth making metadata a RefCell to save the result of checks like this?
-            //If not, ditch metadata and replace with String field for locator
-            matches!(r, Ok(_e))
-        }
+            )
+            .is_ok(),
         Err(e) => {
             error!(
                 "Failed to defer decode certificate in is_self_signed with: {}",
