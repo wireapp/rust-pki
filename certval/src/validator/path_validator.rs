@@ -197,10 +197,10 @@ pub fn check_basic_constraints(
 
         let is_ee = !bc.ca;
 
-        if is_ee && is_self_signed(pe, &cp.target) {
+        if is_ee && (is_self_issued(&cp.target.decoded_cert) || is_self_signed(pe, &cp.target)) {
             log_error_for_ca(
                 &cp.target,
-                "End-identity certificate is self-signed, but it is forbidden",
+                "End-identity certificate is self-signed or self-issued, but it is forbidden",
             );
             set_validation_status(cpr, PathValidationStatus::SelfSignedEndIdentity);
             return Err(Error::PathValidation(
