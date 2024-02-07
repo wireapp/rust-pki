@@ -378,6 +378,17 @@ impl PkiEnvironment {
         self.certificate_sources.clear();
     }
 
+    /// gives all the intermediate certificates
+    pub fn get_intermediates(&self) -> Result<Vec<&PDVCertificate>> {
+        for f in &self.certificate_sources {
+            let r = f.get_certificates();
+            if let Ok(r) = r {
+                return Ok(r);
+            }
+        }
+        Err(Error::Unrecognized)
+    }
+
     /// add_crl_source adds a [`CrlSource`] object to the list.
     pub fn add_crl_source(&mut self, c: Box<(dyn CrlSource + Send + Sync)>) {
         self.crl_sources.push(c);
