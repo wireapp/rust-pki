@@ -931,11 +931,6 @@ impl CertSource {
     /// find_all_partial_paths is a slow recursive builder intended for offline use prior to
     /// serializing a set of partial paths.
     pub fn find_all_partial_paths(&self, pe: &'_ PkiEnvironment, cps: &CertificationPathSettings) {
-        let mut ta_vec = vec![];
-        if let Ok(tav) = pe.get_trust_anchors() {
-            ta_vec = tav;
-        }
-
         let mut partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.write() {
             g
         } else {
@@ -944,7 +939,7 @@ impl CertSource {
 
         partial_paths.clear();
 
-        self.find_all_partial_paths_internal(pe, ta_vec, cps, 0, &mut partial_paths);
+        self.find_all_partial_paths_internal(pe, cps, 0, &mut partial_paths);
     }
 
     /// Return list of buffers
@@ -1242,8 +1237,6 @@ impl CertSource {
     fn find_all_partial_paths_internal(
         &self,
         pe: &'_ PkiEnvironment,
-        //todo remove param
-        _ta_vec: Vec<&PDVTrustAnchorChoice>,
         cps: &CertificationPathSettings,
         pass: u8,
         partial_paths: &mut Vec<BTreeMap<String, Vec<Vec<usize>>>>,
@@ -1380,7 +1373,7 @@ impl CertSource {
             partial_paths.push(new_additions);
             // 13 because the number of passes does not count TA or target
             if (PS_MAX_PATH_LENGTH_CONSTRAINT - 2) > pass {
-                self.find_all_partial_paths_internal(pe, _ta_vec, cps, pass + 1, partial_paths);
+                self.find_all_partial_paths_internal(pe, cps, pass + 1, partial_paths);
             }
         }
     }
@@ -1438,6 +1431,8 @@ impl CertificateSource for CertSource {
                 } else {
                     return Err(Error::Unrecognized);
                 };
+
+                dbg!(&*partial_paths);
 
                 for p in partial_paths.iter() {
                     if p.contains_key(&akid_hex) {

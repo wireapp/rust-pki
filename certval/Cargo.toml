@@ -71,6 +71,7 @@ webpki-roots = {version = "0.25.1", optional = true}
 tempfile = "3.8.1"
 hex-literal = "0.4.1"
 tokio-test = "0.4.2"
+pretty_env_logger = "0.5"
 
 # There are five feature gates:
 #   - no-default-features (i.e., no-std) provides full path validation without file system support, network or thread safety (and no revocation support)
