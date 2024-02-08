@@ -1,9 +1,10 @@
 //use certval::asn1::cryptographic_message_syntax2004::*;
+
 use certval::environment::pki_environment::PkiEnvironment;
 use certval::path_settings::*;
 use certval::validator::path_validator::*;
 use certval::*;
-use der::Decode;
+use der::{Decode, DecodePem, Encode};
 use x509_cert::*;
 
 #[test]
@@ -172,4 +173,66 @@ fn denies_self_signed_ee() {
     }
 
     panic!("EE cert was accepted");
+}
+
+#[test]
+fn wire_certchain_works() {
+    let _ = pretty_env_logger::try_init();
+
+    const TIME_OF_INTEREST: u64 = 1707402960;
+
+    let mut pe = certval::environment::PkiEnvironment::default();
+    populate_5280_pki_environment(&mut pe);
+
+    let mut cps = CertificationPathSettings::new();
+    set_time_of_interest(&mut cps, TIME_OF_INTEREST);
+
+    // Make a TrustAnchor source
+    let mut trust_anchors = TaSource::new();
+
+    let root =
+        x509_cert::Certificate::from_pem(include_bytes!("examples/wire_certchain/ta.pem")).unwrap();
+
+    trust_anchors.push(certval::CertFile {
+        filename: format!("TrustAnchor #1"),
+        bytes: root.to_der().unwrap(),
+    });
+
+    trust_anchors.initialize().unwrap();
+    pe.add_trust_anchor_source(Box::new(trust_anchors));
+
+    // Make a Certificate source for intermediate CA certs
+    let mut cert_source = CertSource::new();
+    let cert = x509_cert::Certificate::from_pem(include_bytes!(
+        "examples/wire_certchain/intermediate.pem"
+    ))
+    .unwrap();
+    cert_source.push(certval::CertFile {
+        filename: format!("Intermediate CA #1 [{}]", cert.tbs_certificate.subject),
+        bytes: cert.to_der().unwrap(),
+    });
+
+    cert_source.initialize(&cps).unwrap();
+    cert_source.find_all_partial_paths(&pe, &cps);
+    pe.add_certificate_source(Box::new(cert_source));
+
+    set_require_ta_store(&mut cps, true);
+    set_forbid_self_signed_ee(&mut cps, true);
+
+    let mut end_identity_cert = PDVCertificate::try_from(
+        Certificate::from_pem(include_bytes!("examples/wire_certchain/ee.pem")).unwrap(),
+    )
+    .unwrap();
+    end_identity_cert.parse_extensions(EXTS_OF_INTEREST);
+
+    let mut paths = vec![];
+    pe.get_paths_for_target(&pe, &end_identity_cert, &mut paths, 0, TIME_OF_INTEREST)
+        .unwrap();
+
+    assert!(!paths.is_empty(), "No paths detected");
+
+    for path in &mut paths {
+        let mut cpr = CertificationPathResults::new();
+        let _ = validate_path_rfc5280(&pe, &cps, path, &mut cpr).unwrap();
+    }
 }
