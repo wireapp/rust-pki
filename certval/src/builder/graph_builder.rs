@@ -182,78 +182,84 @@ pub fn read_cbor(filename: &Option<String>) -> Vec<u8> {
     vec![]
 }
 
-#[cfg(feature = "std")]
-#[tokio::test]
-async fn non_existent_dir() {
-    let ta_store_folder = format!(
-        "{}{}",
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/examples/ta_store_with_bad"
-    );
-    let ca_store_folder = format!(
-        "{}{}",
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/examples/cert_store_with_expired"
-    );
-    let nonexistent = format!(
-        "{}{}",
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/examples/nonexistent"
-    );
+#[cfg(test)]
+mod tests {
+    use crate::builder::file_utils::ta_folder_to_vec;
+    use crate::*;
 
-    let mut pe = PkiEnvironment::default();
-    pe.populate_5280_pki_environment();
+    #[cfg(feature = "std")]
+    #[tokio::test]
+    async fn non_existent_dir() {
+        let ta_store_folder = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/examples/ta_store_with_bad"
+        );
+        let ca_store_folder = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/examples/cert_store_with_expired"
+        );
+        let nonexistent = format!(
+            "{}{}",
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/examples/nonexistent"
+        );
 
-    let mut ta_store = TaSource::new();
-    ta_folder_to_vec(
-        &pe,
-        &ta_store_folder,
-        &mut ta_store,
-        TimeOfInterest::disabled(),
-    )
-    .unwrap();
-    ta_store.initialize().unwrap();
+        let mut pe = PkiEnvironment::default();
+        pe.populate_5280_pki_environment();
 
-    let mut cps = CertificationPathSettings::default();
-    let r = build_graph(&pe, &cps).await;
-    assert!(r.is_err());
-    let r = r.err();
-    assert_eq!(Some(Error::NotFound), r);
+        let mut ta_store = TaSource::new();
+        ta_folder_to_vec(
+            &pe,
+            &ta_store_folder,
+            &mut ta_store,
+            TimeOfInterest::disabled(),
+        )
+        .unwrap();
+        ta_store.initialize().unwrap();
 
-    let r = build_graph(&pe, &cps).await;
-    assert!(r.is_err());
-    let r = r.err();
-    assert_eq!(Some(Error::NotFound), r);
+        let mut cps = CertificationPathSettings::default();
+        let r = build_graph(&pe, &cps).await;
+        assert!(r.is_err());
+        let r = r.err();
+        assert_eq!(Some(Error::NotFound), r);
 
-    cps.set_certification_authority_folder(nonexistent.clone());
-    let r = build_graph(&pe, &cps).await;
-    assert!(r.is_err());
-    let r = r.err();
-    assert_eq!(Some(Error::NotFound), r);
+        let r = build_graph(&pe, &cps).await;
+        assert!(r.is_err());
+        let r = r.err();
+        assert_eq!(Some(Error::NotFound), r);
 
-    cps.set_retrieve_from_aia_sia_http(false);
-    cps.set_certification_authority_folder(ca_store_folder.clone());
-    pe.add_trust_anchor_source(Box::new(ta_store.clone()));
-    let cbor = build_graph(&pe, &cps).await;
-    assert!(cbor.is_ok());
-    let cert_source = match CertSource::new_from_cbor(cbor.unwrap().as_slice()) {
-        Ok(cbor_data) => cbor_data,
-        Err(e) => {
-            panic!("Failed to parse CBOR file: {}", e)
-        }
-    };
-    assert_eq!(3, cert_source.len());
+        cps.set_certification_authority_folder(nonexistent.clone());
+        let r = build_graph(&pe, &cps).await;
+        assert!(r.is_err());
+        let r = r.err();
+        assert_eq!(Some(Error::NotFound), r);
 
-    // serialize as TA store (so no partial paths)
-    cps.set_cbor_ta_store(true);
-    cps.set_certification_authority_folder(ca_store_folder.clone());
-    let cbor = build_graph(&pe, &cps).await;
-    assert!(cbor.is_ok());
-    let cert_source = match CertSource::new_from_cbor(cbor.unwrap().as_slice()) {
-        Ok(cbor_data) => cbor_data,
-        Err(e) => {
-            panic!("Failed to parse CBOR file: {}", e)
-        }
-    };
-    assert_eq!(3, cert_source.len());
+        cps.set_retrieve_from_aia_sia_http(false);
+        cps.set_certification_authority_folder(ca_store_folder.clone());
+        pe.add_trust_anchor_source(Box::new(ta_store.clone()));
+        let cbor = build_graph(&pe, &cps).await;
+        assert!(cbor.is_ok());
+        let cert_source = match CertSource::new_from_cbor(cbor.unwrap().as_slice()) {
+            Ok(cbor_data) => cbor_data,
+            Err(e) => {
+                panic!("Failed to parse CBOR file: {}", e)
+            }
+        };
+        assert_eq!(3, cert_source.len());
+
+        // serialize as TA store (so no partial paths)
+        cps.set_cbor_ta_store(true);
+        cps.set_certification_authority_folder(ca_store_folder.clone());
+        let cbor = build_graph(&pe, &cps).await;
+        assert!(cbor.is_ok());
+        let cert_source = match CertSource::new_from_cbor(cbor.unwrap().as_slice()) {
+            Ok(cbor_data) => cbor_data,
+            Err(e) => {
+                panic!("Failed to parse CBOR file: {}", e)
+            }
+        };
+        assert_eq!(3, cert_source.len());
+    }
 }

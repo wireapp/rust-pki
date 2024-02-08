@@ -11,7 +11,7 @@ use core::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "revocation"))]
 use url::Url;
 
 #[cfg(feature = "std")]
@@ -128,23 +128,13 @@ impl NameConstraintsSet {
             // as None signifies a failure.
             match gn {
                 GeneralName::Rfc822Name(_rfc822) => {
-                    #[cfg(feature = "std")]
                     if !self.rfc822_name_null {
                         self.rfc822_name.push(subtree.clone());
                     }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        self.rfc822_name_null = true;
-                    }
                 }
                 GeneralName::DnsName(_dns) => {
-                    #[cfg(feature = "std")]
                     if !self.dns_name_null {
                         self.dns_name.push(subtree.clone());
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        self.dns_name_null = true;
                     }
                 }
                 GeneralName::DirectoryName(_dn) => {
@@ -153,13 +143,8 @@ impl NameConstraintsSet {
                     }
                 }
                 GeneralName::UniformResourceIdentifier(_uri) => {
-                    #[cfg(feature = "std")]
                     if !self.uniform_resource_identifier_null {
                         self.uniform_resource_identifier.push(subtree.clone());
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        self.uniform_resource_identifier_null = true;
                     }
                 }
                 GeneralName::IpAddress(_ip) => {
@@ -270,8 +255,6 @@ impl NameConstraintsSet {
                         }
 
                         let mut rfc822_ok = false;
-
-                        #[cfg(feature = "std")]
                         for gn_state in &self.rfc822_name {
                             if let GeneralName::Rfc822Name(rfc822_state) = &gn_state.base {
                                 if descended_from_rfc822(rfc822_state, rfc822_san) {
@@ -296,8 +279,6 @@ impl NameConstraintsSet {
                         }
 
                         let mut dns_ok = false;
-
-                        #[cfg(feature = "std")]
                         for gn_state in &self.dns_name {
                             if let GeneralName::DnsName(dns_state) = &gn_state.base {
                                 if descended_from_host(dns_state, dns_san.as_str(), false) {
@@ -322,8 +303,6 @@ impl NameConstraintsSet {
                         }
 
                         let mut uri_ok = false;
-
-                        #[cfg(feature = "std")]
                         for gn_state in &self.uniform_resource_identifier {
                             if let GeneralName::UniformResourceIdentifier(uri_state) =
                                 &gn_state.base
@@ -483,7 +462,6 @@ impl NameConstraintsSet {
                             continue;
                         }
 
-                        #[cfg(feature = "std")]
                         for gn_state in &self.dns_name {
                             if let GeneralName::DnsName(dns_state) = &gn_state.base {
                                 if descended_from_host(dns_state, dns_san.as_str(), false) {
@@ -503,7 +481,6 @@ impl NameConstraintsSet {
                             continue;
                         }
 
-                        #[cfg(feature = "std")]
                         for gn_state in &self.uniform_resource_identifier {
                             if let GeneralName::UniformResourceIdentifier(uri_state) =
                                 &gn_state.base
@@ -574,38 +551,30 @@ impl NameConstraintsSet {
             return;
         }
 
-        #[cfg(not(feature = "std"))]
-        {
-            self.rfc822_name_null = true;
-        }
+        let mut new_set = Vec::new();
 
-        #[cfg(feature = "std")]
-        {
-            let mut new_set = Vec::new();
-
-            for new_name in new_names {
-                if let GeneralName::Rfc822Name(new_rfc822) = &new_name.base {
-                    if self.rfc822_name.is_empty() {
-                        new_set.push(new_name.clone());
-                    } else {
-                        for prev_name in &self.rfc822_name {
-                            if let GeneralName::Rfc822Name(prev_rfc822) = &prev_name.base {
-                                if new_name == prev_name
-                                    || descended_from_rfc822(prev_rfc822, new_rfc822)
-                                {
-                                    new_set.push(prev_name.clone());
-                                }
+        for new_name in new_names {
+            if let GeneralName::Rfc822Name(new_rfc822) = &new_name.base {
+                if self.rfc822_name.is_empty() {
+                    new_set.push(new_name.clone());
+                } else {
+                    for prev_name in &self.rfc822_name {
+                        if let GeneralName::Rfc822Name(prev_rfc822) = &prev_name.base {
+                            if new_name == prev_name
+                                || descended_from_rfc822(prev_rfc822, new_rfc822)
+                            {
+                                new_set.push(prev_name.clone());
                             }
                         }
                     }
                 }
             }
+        }
 
-            if !new_set.is_empty() {
-                self.rfc822_name = new_set;
-            } else {
-                self.rfc822_name_null = true;
-            }
+        if !new_set.is_empty() {
+            self.rfc822_name = new_set;
+        } else {
+            self.rfc822_name_null = true;
         }
     }
 
@@ -615,38 +584,30 @@ impl NameConstraintsSet {
             return;
         }
 
-        #[cfg(not(feature = "std"))]
-        {
-            self.dns_name_null = true;
-        }
+        let mut new_set = Vec::new();
 
-        #[cfg(feature = "std")]
-        {
-            let mut new_set = Vec::new();
-
-            for new_name in new_names {
-                if let GeneralName::DnsName(new_dns) = &new_name.base {
-                    if self.dns_name.is_empty() {
-                        new_set.push(new_name.clone());
-                    } else {
-                        for prev_name in &self.dns_name {
-                            if let GeneralName::DnsName(prev_dns) = &prev_name.base {
-                                if new_name == prev_name
-                                    || descended_from_host(prev_dns, new_dns.as_str(), false)
-                                {
-                                    new_set.push(prev_name.clone());
-                                }
+        for new_name in new_names {
+            if let GeneralName::DnsName(new_dns) = &new_name.base {
+                if self.dns_name.is_empty() {
+                    new_set.push(new_name.clone());
+                } else {
+                    for prev_name in &self.dns_name {
+                        if let GeneralName::DnsName(prev_dns) = &prev_name.base {
+                            if new_name == prev_name
+                                || descended_from_host(prev_dns, new_dns.as_str(), false)
+                            {
+                                new_set.push(prev_name.clone());
                             }
                         }
                     }
                 }
             }
+        }
 
-            if !new_set.is_empty() {
-                self.dns_name = new_set;
-            } else {
-                self.dns_name_null = true;
-            }
+        if !new_set.is_empty() {
+            self.dns_name = new_set;
+        } else {
+            self.dns_name_null = true;
         }
     }
 
@@ -694,40 +655,30 @@ impl NameConstraintsSet {
             return;
         }
 
-        #[cfg(not(feature = "std"))]
-        {
-            self.uniform_resource_identifier_null = true;
-        }
+        let mut new_set = Vec::new();
 
-        #[cfg(feature = "std")]
-        {
-            let mut new_set = Vec::new();
-
-            for new_name in new_names {
-                if let GeneralName::UniformResourceIdentifier(new_uri) = &new_name.base {
-                    if self.uniform_resource_identifier.is_empty() {
-                        new_set.push(new_name.clone());
-                    } else {
-                        for prev_name in &self.uniform_resource_identifier {
-                            if let GeneralName::UniformResourceIdentifier(prev_uri) =
-                                &prev_name.base
+        for new_name in new_names {
+            if let GeneralName::UniformResourceIdentifier(new_uri) = &new_name.base {
+                if self.uniform_resource_identifier.is_empty() {
+                    new_set.push(new_name.clone());
+                } else {
+                    for prev_name in &self.uniform_resource_identifier {
+                        if let GeneralName::UniformResourceIdentifier(prev_uri) = &prev_name.base {
+                            if new_name == prev_name
+                                || descended_from_host(prev_uri, new_uri.as_str(), true)
                             {
-                                if new_name == prev_name
-                                    || descended_from_host(prev_uri, new_uri.as_str(), true)
-                                {
-                                    new_set.push(prev_name.clone());
-                                }
+                                new_set.push(prev_name.clone());
                             }
                         }
                     }
                 }
             }
+        }
 
-            if !new_set.is_empty() {
-                self.uniform_resource_identifier = new_set;
-            } else {
-                self.uniform_resource_identifier_null = true;
-            }
+        if !new_set.is_empty() {
+            self.uniform_resource_identifier = new_set;
+        } else {
+            self.uniform_resource_identifier_null = true;
         }
     }
 

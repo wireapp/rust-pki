@@ -1182,56 +1182,63 @@ pub(crate) async fn check_revocation_crl_remote(
     target_status
 }
 
-#[cfg(feature = "remote")]
-#[tokio::test]
-async fn fetch_crl_test() {
-    use crate::{CrlSourceFolders, RemoteStatus, RevocationCache};
-    use std::path::PathBuf;
-    let mut pe = PkiEnvironment::default();
-    pe.clear_all_callbacks();
-    pe.populate_5280_pki_environment();
+#[cfg(test)]
+mod tests {
+    use crate::*;
 
-    let d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let f = d.join("tests/examples/fetch_crl_test");
-    let crl_source = CrlSourceFolders::new(f.as_path().to_str().unwrap());
-    if crl_source
-        .index_crls(TimeOfInterest::from_unix_secs(1647011592).unwrap())
-        .is_err()
-    {
-        panic!("Failed to index CRLs")
+    #[cfg(feature = "remote")]
+    #[tokio::test]
+    async fn fetch_crl_test() {
+        use crate::{CrlSourceFolders, RemoteStatus, RevocationCache};
+        use std::{path::PathBuf, time::Duration};
+
+        use self::crl::fetch_crl;
+        let mut pe = PkiEnvironment::default();
+        pe.clear_all_callbacks();
+        pe.populate_5280_pki_environment();
+
+        let d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let f = d.join("tests/examples/fetch_crl_test");
+        let crl_source = CrlSourceFolders::new(f.as_path().to_str().unwrap());
+        if crl_source
+            .index_crls(TimeOfInterest::from_unix_secs(1647011592).unwrap())
+            .is_err()
+        {
+            panic!("Failed to index CRLs")
+        }
+        pe.add_crl_source(Box::new(crl_source));
+        pe.add_revocation_cache(Box::new(RevocationCache::new()));
+        pe.add_check_remote(Box::new(RemoteStatus::new(f.as_path().to_str().unwrap())));
+
+        let r = fetch_crl(&pe, "ldap://ldap.scheme/", Duration::from_secs(60)).await;
+        assert!(r.is_err());
+        assert_eq!(Some(Error::InvalidUriScheme), r.err());
+        pe.add_to_blocklist("http://blocklist.test");
+        let r = fetch_crl(&pe, "http://blocklist.test", Duration::from_secs(60)).await;
+        assert!(r.is_err());
+        assert_eq!(Some(Error::UriOnBlocklist), r.err());
+
+        let f = d.join("tests/examples/fetch_crl_test/last_modified_map.json");
+        if std::path::Path::exists(&f) {
+            tokio::fs::remove_file(f.to_str().unwrap()).await.unwrap();
+        }
+
+        let r = fetch_crl(
+            &pe,
+            "http://crl.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crl",
+            Duration::from_secs(60),
+        )
+        .await;
+        assert!(r.is_ok());
+        let r = fetch_crl(
+            &pe,
+            "http://crl.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crl",
+            Duration::from_secs(60),
+        )
+        .await;
+        assert!(r.is_err());
+        assert_eq!(Some(Error::ResourceUnchanged), r.err());
+
+        let _ = tokio::fs::remove_file(f.to_str().unwrap()).await;
     }
-    pe.add_crl_source(Box::new(crl_source));
-    pe.add_revocation_cache(Box::new(RevocationCache::new()));
-    pe.add_check_remote(Box::new(RemoteStatus::new(f.as_path().to_str().unwrap())));
-
-    let r = fetch_crl(&pe, "ldap://ldap.scheme/", Duration::from_secs(60)).await;
-    assert!(r.is_err());
-    assert_eq!(Some(Error::InvalidUriScheme), r.err());
-    pe.add_to_blocklist("http://blocklist.test");
-    let r = fetch_crl(&pe, "http://blocklist.test", Duration::from_secs(60)).await;
-    assert!(r.is_err());
-    assert_eq!(Some(Error::UriOnBlocklist), r.err());
-
-    let f = d.join("tests/examples/fetch_crl_test/last_modified_map.json");
-    if std::path::Path::exists(&f) {
-        tokio::fs::remove_file(f.to_str().unwrap()).await.unwrap();
-    }
-
-    let r = fetch_crl(
-        &pe,
-        "http://crl.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crl",
-        Duration::from_secs(60),
-    )
-    .await;
-    assert!(r.is_ok());
-    let r = fetch_crl(
-        &pe,
-        "http://crl.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crl",
-        Duration::from_secs(60),
-    )
-    .await;
-    assert!(r.is_err());
-    assert_eq!(Some(Error::ResourceUnchanged), r.err());
-
-    let _ = tokio::fs::remove_file(f.to_str().unwrap()).await;
 }

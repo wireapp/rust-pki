@@ -74,6 +74,8 @@ tempfile = "3.8.1"
 hex-literal = "0.4.1"
 tokio-test = "0.4.2"
 pretty_env_logger = "0.5"
+tokio = { version = "1.33.0", features = ["full", "time", "rt-multi-thread"] }
+
 
 # There are five feature gates:
 #   - no-default-features (i.e., no-std) provides full path validation without file system support, network or thread safety (and no revocation support)
@@ -85,8 +87,8 @@ pretty_env_logger = "0.5"
 # webpki can be paired with any other feature and simply adds a means of initializing a TaSource from the webpki-roots crate
 [features]
 default = ["remote", "webpki"]
-revocation = ["ndarray", "serde/std", "serde/rc"]
-std = ["ndarray", "tokio", "base64ct", "walkdir", "ed25519-dalek/std", "url", "serde_json", "serde/rc",  "flagset/serde", "regex", "lazy_static/spin", "bitvec", "cidr", "der/std"]
+revocation = ["dep:ndarray", "serde/std", "serde/rc", "dep:url", "dep:regex"]
+std = ["dep:ndarray", "dep:base64ct", "dep:walkdir", "ed25519-dalek/std", "dep:url", "dep:serde_json", "serde/rc",  "flagset/serde", "dep:regex", "lazy_static/spin", "dep:bitvec", "dep:cidr", "der/std"]
 remote = ["revocation", "std", "reqwest", "lazy_static/spin"]
 pqc = ["pqcrypto-internals", "pqcrypto-dilithium", "pqcrypto-falcon", "pqcrypto-sphincsplus", "pqcrypto", "pqcrypto-traits", "pqckeys"]
 webpki = ["webpki-roots"]
