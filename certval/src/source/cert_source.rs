@@ -63,7 +63,7 @@ use crate::{
         collect_uris_from_aia_and_sia, is_self_issued, name_to_string, valid_at_time,
     },
     CertificateSource, CertificationPath, CertificationPathSettings, ExtensionProcessing,
-    NameConstraintsSet, PDVCertificate, PDVTrustAnchorChoice, PkiEnvironment, EXTS_OF_INTEREST,
+    NameConstraintsSet, PDVCertificate, PkiEnvironment, EXTS_OF_INTEREST,
     PS_MAX_PATH_LENGTH_CONSTRAINT,
 };
 
@@ -1431,8 +1431,6 @@ impl CertificateSource for CertSource {
                 } else {
                     return Err(Error::Unrecognized);
                 };
-
-                dbg!(&*partial_paths);
 
                 for p in partial_paths.iter() {
                     if p.contains_key(&akid_hex) {

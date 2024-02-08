@@ -179,7 +179,7 @@ fn denies_self_signed_ee() {
 fn wire_certchain_works() {
     let _ = pretty_env_logger::try_init();
 
-    const TIME_OF_INTEREST: u64 = 1707402960;
+    const TIME_OF_INTEREST: u64 = 1707405529;
 
     let mut pe = certval::environment::PkiEnvironment::default();
     populate_5280_pki_environment(&mut pe);
@@ -234,5 +234,7 @@ fn wire_certchain_works() {
     for path in &mut paths {
         let mut cpr = CertificationPathResults::new();
         let _ = validate_path_rfc5280(&pe, &cps, path, &mut cpr).unwrap();
+        let validation_status = get_validation_status(&cpr).unwrap();
+        assert_eq!(validation_status, PathValidationStatus::Valid);
     }
 }
