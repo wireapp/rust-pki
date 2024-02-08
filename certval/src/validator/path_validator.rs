@@ -182,13 +182,13 @@ pub fn check_basic_constraints(
         }
     }
 
-    if get_forbid_self_signed_ee(cps) {
+    if cps.get_forbid_self_signed_ee() {
         let pdv_ext: Option<&PDVExtension> = cp.target.get_extension(&ID_CE_BASIC_CONSTRAINTS)?;
         let bc = match pdv_ext {
             Some(PDVExtension::BasicConstraints(bc)) => bc,
             _ => {
                 log_error_for_ca(&cp.target, "missing basic constraints");
-                set_validation_status(cpr, PathValidationStatus::MissingBasicConstraints);
+                cpr.set_validation_status(PathValidationStatus::MissingBasicConstraints);
                 return Err(Error::PathValidation(
                     PathValidationStatus::MissingBasicConstraints,
                 ));
@@ -202,7 +202,7 @@ pub fn check_basic_constraints(
                 &cp.target,
                 "End-identity certificate is self-signed or self-issued, but it is forbidden",
             );
-            set_validation_status(cpr, PathValidationStatus::SelfSignedEndIdentity);
+            cpr.set_validation_status(PathValidationStatus::SelfSignedEndIdentity);
             return Err(Error::PathValidation(
                 PathValidationStatus::SelfSignedEndIdentity,
             ));

@@ -1397,6 +1397,8 @@ impl CertificateSource for CertSource {
             if !akid_hex.is_empty() {
                 let partial_paths = &self.buffers_and_paths.partial_paths;
 
+                dbg!(&*partial_paths);
+
                 for p in partial_paths.iter() {
                     if p.contains_key(&akid_hex) {
                         let indices_vec = &p[&akid_hex];
