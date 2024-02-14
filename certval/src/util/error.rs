@@ -130,6 +130,16 @@ pub enum Error {
     StdIoError(std::io::ErrorKind),
 }
 
+impl Error {
+    /// Returns true if the error returned is for an expired certificate
+    pub fn is_certificate_expired_error(&self) -> bool {
+        matches!(
+            self,
+            Self::PathValidation(PathValidationStatus::InvalidNotAfterDate)
+        )
+    }
+}
+
 impl From<der::Error> for Error {
     fn from(err: der::Error) -> Error {
         Error::Asn1Error(err)

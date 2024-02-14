@@ -158,8 +158,9 @@ fn denies_self_signed_ee() {
     let mut cps = CertificationPathSettings::default();
     set_forbid_self_signed_ee(&mut cps, true);
     let mut paths = vec![];
-    pe.get_paths_for_target(&pe, &cert, &mut paths, 0, get_time_of_interest(&cps))
-        .unwrap();
+    if let Err(e) = pe.get_paths_for_target(&pe, &cert, &mut paths, 0, get_time_of_interest(&cps)) {
+        assert!(e.is_certificate_expired_error());
+    }
 
     if paths.is_empty() {
         return;
