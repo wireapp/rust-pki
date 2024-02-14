@@ -476,17 +476,19 @@ impl PkiEnvironment {
         time_of_interest: TimeOfInterest,
     ) -> Result<()> {
         let mut some_valid = false;
+        let mut last_error = Error::Unrecognized;
         for f in &self.certificate_sources {
-            if f.get_paths_for_target(self, target, paths, threshold, time_of_interest)
-                .is_ok()
-            {
-                some_valid = true;
+            match f.get_paths_for_target(self, target, paths, threshold, time_of_interest) {
+                Ok(_) => some_valid = true,
+                Err(e) => {
+                    last_error = e;
+                }
             }
         }
         if some_valid {
             Ok(())
         } else {
-            Err(Error::Unrecognized)
+            Err(last_error)
         }
     }
 

@@ -417,6 +417,7 @@ fn empty_cbor1() -> Result<(), Box<dyn std::error::Error>> {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
         cmd.arg("--cbor").arg("tests/examples/empty.cbor");
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -475,6 +476,7 @@ fn empty_cbor2() -> Result<(), Box<dyn std::error::Error>> {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
         cmd.arg("--cbor").arg("tests/examples/empty.cbor");
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -534,6 +536,7 @@ fn empty_cbor3() -> Result<(), Box<dyn std::error::Error>> {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
         cmd.arg("--cbor").arg("tests/examples/empty.cbor");
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -593,6 +596,7 @@ fn empty_cbor4() -> Result<(), Box<dyn std::error::Error>> {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
         cmd.arg("--cbor").arg("tests/examples/empty.cbor");
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -640,6 +644,7 @@ fn absent_cbor1() -> Result<(), Box<dyn std::error::Error>> {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
         cmd.arg("-t").arg("tests/examples/ta_store_one");
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
         cmd.assert().stdout(predicate::str::contains(
@@ -687,6 +692,7 @@ fn absent_cbor2() -> Result<(), Box<dyn std::error::Error>> {
     {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -736,6 +742,7 @@ fn absent_cbor3() -> Result<(), Box<dyn std::error::Error>> {
     {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -784,6 +791,7 @@ fn absent_cbor4() -> Result<(), Box<dyn std::error::Error>> {
     {
         // Try static building with empty CBOR to affirm it fails
         let mut cmd = Command::cargo_bin("pittv3")?;
+        cmd.arg("--time-of-interest").arg("1674179800");
         cmd.arg("-t").arg("tests/examples/ta_store_one");
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_email_CA_63.der");
@@ -1168,7 +1176,7 @@ fn generate_then_validate_with_expired() -> Result<(), Box<dyn std::error::Error
         cmd.arg("-e")
             .arg("tests/examples/end_entities/from_id_CA_62.der");
         cmd.assert().stdout(predicate::str::contains(
-            "Failed to find any certification paths for target",
+            "Failed to find certification paths for target with error PathValidation(InvalidNotBeforeDate)",
         ));
     }
 
@@ -1344,7 +1352,7 @@ fn bad_input() -> Result<(), Box<dyn std::error::Error>> {
         cmd.assert()
             .stdout(predicate::str::contains("Total paths found: 0"));
         cmd.assert().stdout(predicate::str::contains(
-            "Failed to find any certification paths for target",
+            "Failed to find certification paths for target with error PathValidation(InvalidNotAfterDate)",
         ));
     }
     Ok(())

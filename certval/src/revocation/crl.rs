@@ -1184,15 +1184,15 @@ pub(crate) async fn check_revocation_crl_remote(
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::crl::fetch_crl;
+    use crate::util::Error;
+    use crate::PkiEnvironment;
 
     #[cfg(feature = "remote")]
     #[tokio::test]
     async fn fetch_crl_test() {
-        use crate::{CrlSourceFolders, RemoteStatus, RevocationCache};
+        use crate::{CrlSourceFolders, RemoteStatus, RevocationCache, TimeOfInterest};
         use std::{path::PathBuf, time::Duration};
-
-        use self::crl::fetch_crl;
         let mut pe = PkiEnvironment::default();
         pe.clear_all_callbacks();
         pe.populate_5280_pki_environment();

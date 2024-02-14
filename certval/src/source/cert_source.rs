@@ -1359,13 +1359,13 @@ impl CertificateSource for CertSource {
         threshold: usize,
         time_of_interest: TimeOfInterest,
     ) -> Result<()> {
-        if let Err(_e) = valid_at_time(&target.decoded_cert.tbs_certificate, time_of_interest, true)
+        if let Err(e) = valid_at_time(&target.decoded_cert.tbs_certificate, time_of_interest, true)
         {
             error!(
                 "No paths found because target is not valid at indicated time of interest ({})",
                 time_of_interest
             );
-            return Ok(());
+            return Err(e);
         }
 
         let ta = pe.get_trust_anchor_for_target(target);

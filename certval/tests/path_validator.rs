@@ -165,8 +165,9 @@ fn denies_self_signed_ee() {
     cps.set_time_of_interest(time_of_interest);
 
     let mut paths = vec![];
-    pe.get_paths_for_target(&cert, &mut paths, 0, cps.get_time_of_interest())
-        .unwrap();
+    if let Err(e) = pe.get_paths_for_target(&cert, &mut paths, 0, cps.get_time_of_interest()) {
+        assert!(e.is_certificate_expired_error());
+    }
 
     if paths.is_empty() {
         return;
