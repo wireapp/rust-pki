@@ -389,6 +389,17 @@ impl PkiEnvironment {
         Err(Error::Unrecognized)
     }
 
+    /// Fetches all intermediate certs matching a particular skid
+    pub fn get_intermediates_by_skid(&self, skid: &[u8]) -> Result<Vec<&PDVCertificate>> {
+        for f in &self.certificate_sources {
+            let r = f.get_certificates_for_skid(skid);
+            if let Ok(r) = r {
+                return Ok(r);
+            }
+        }
+        Err(Error::Unrecognized)
+    }
+
     /// add_crl_source adds a [`CrlSource`] object to the list.
     pub fn add_crl_source(&mut self, c: Box<(dyn CrlSource + Send + Sync)>) {
         self.crl_sources.push(c);
