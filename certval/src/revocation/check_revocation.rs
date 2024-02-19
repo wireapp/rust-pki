@@ -410,6 +410,7 @@ pub fn check_revocation(
         cpr.set_validation_status(RevocationStatusNotDetermined);
         Err(Error::PathValidation(RevocationStatusNotDetermined))
     } else {
+        set_validation_status(cpr, Valid);
         Ok(())
     }
 }
