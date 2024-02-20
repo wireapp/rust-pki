@@ -184,18 +184,11 @@ pub fn check_basic_constraints(
 
     if cps.get_forbid_self_signed_ee() {
         let pdv_ext: Option<&PDVExtension> = cp.target.get_extension(&ID_CE_BASIC_CONSTRAINTS)?;
-        let bc = match pdv_ext {
-            Some(PDVExtension::BasicConstraints(bc)) => bc,
-            _ => {
-                log_error_for_ca(&cp.target, "missing basic constraints");
-                cpr.set_validation_status(PathValidationStatus::MissingBasicConstraints);
-                return Err(Error::PathValidation(
-                    PathValidationStatus::MissingBasicConstraints,
-                ));
-            }
+        let is_ee = if let Some(PDVExtension::BasicConstraints(bc)) = pdv_ext {
+            !bc.ca
+        } else {
+            true
         };
-
-        let is_ee = !bc.ca;
 
         if is_ee && (is_self_issued(&cp.target.decoded_cert) || is_self_signed(pe, &cp.target)) {
             log_error_for_ca(
