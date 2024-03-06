@@ -15,7 +15,7 @@ use const_oid::db::rfc5912::{
     ID_CE_FRESHEST_CRL, ID_CE_HOLD_INSTRUCTION_CODE, ID_CE_INVALIDITY_DATE,
     ID_CE_ISSUING_DISTRIBUTION_POINT, ID_CE_KEY_USAGE,
 };
-use der::{Decode, Encode};
+use der::{Decode, DerOrd, Encode};
 use x509_cert::ext::pkix::crl::dp::ReasonFlags;
 use x509_cert::ext::pkix::{
     crl::dp::DistributionPoint,
@@ -1081,7 +1081,12 @@ pub(crate) fn process_crl(
                 return Err(Error::UnsupportedIndirectCrl);
             }
 
-            if rc.serial_number == target_cert.decoded_cert.tbs_certificate.serial_number {
+            if rc
+                .serial_number
+                .der_cmp(&target_cert.decoded_cert.tbs_certificate.serial_number)
+                .map(|ordering| matches!(ordering, std::cmp::Ordering::Equal))
+                .unwrap_or_default()
+            {
                 // this is probably not a useful check. will change ultimate error from revoked to
                 // status not determined, most likely.
                 if let Err(_e) = check_entry_extensions(&rc) {
@@ -1194,7 +1199,6 @@ pub(crate) async fn check_revocation_crl_remote(
 
 #[cfg(test)]
 mod tests {
-    use crate::crl::fetch_crl;
     use crate::util::Error;
     use crate::PkiEnvironment;
 
@@ -1202,7 +1206,7 @@ mod tests {
     #[tokio::test]
     async fn fetch_crl_test() {
         use crate::populate_5280_pki_environment;
-        use crate::{CrlSourceFolders, RemoteStatus, RevocationCache};
+        use crate::{crl::fetch_crl, CrlSourceFolders, RemoteStatus, RevocationCache};
         use std::path::PathBuf;
         let mut pe = PkiEnvironment::default();
         pe.clear_all_callbacks();
