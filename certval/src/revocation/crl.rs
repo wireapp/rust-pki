@@ -529,14 +529,24 @@ pub(crate) fn get_crl_info(crl: &CertificateList) -> Result<CrlInfo> {
                     match &idp.distribution_point {
                         Some(DistributionPointName::FullName(gns)) => {
                             for gn in gns {
-                                if let GeneralName::DirectoryName(dn) = gn {
-                                    idp_name = Some(name_to_string(dn));
+                                match gn {
+                                    GeneralName::DirectoryName(dn) => {
+                                        idp_name.replace(name_to_string(dn));
+                                    }
+                                    GeneralName::UniformResourceIdentifier(uri) => {
+                                        let uri_str: &str = uri.as_ref();
+                                        idp_name.replace(uri_str.to_string());
+                                    }
+                                    _ => {}
+                                }
+
+                                if idp_name.is_some() {
                                     break;
                                 }
                             }
                             if idp_name.is_none() {
-                                // not supporting non-DN DPs
-                                return Err(Error::Unrecognized);
+                                // not supporting non-DN/URI DPs
+                                return Err(Error::Unrecognized.into());
                             }
                         }
                         Some(DistributionPointName::NameRelativeToCRLIssuer(_unsupported)) => {

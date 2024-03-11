@@ -346,12 +346,12 @@ impl TrustAnchorSource for TaSource {
         &'_ self,
         target: &'_ PDVCertificate,
     ) -> Result<&PDVTrustAnchorChoice> {
-        let mut akid_hex = "".to_string();
+        let mut akid_hex = None;
         let mut name_vec = vec![&target.decoded_cert.tbs_certificate.issuer];
         let akid_ext = target.get_extension(&ID_CE_AUTHORITY_KEY_IDENTIFIER);
         if let Ok(Some(PDVExtension::AuthorityKeyIdentifier(akid))) = akid_ext {
             if let Some(kid) = &akid.key_identifier {
-                akid_hex = buffer_to_hex(kid.as_bytes());
+                akid_hex.replace(buffer_to_hex(kid.as_bytes()));
             } else if let Some(names) = &akid.authority_cert_issuer {
                 for n in names {
                     if let GeneralName::DirectoryName(dn) = n {
@@ -360,7 +360,8 @@ impl TrustAnchorSource for TaSource {
                 }
             }
         }
-        if !akid_hex.is_empty() {
+
+        if let Some(akid_hex) = akid_hex {
             match self.get_trust_anchor_by_hex_skid(&akid_hex) {
                 Ok(s) => return Ok(s),
                 Err(_e) => {
@@ -368,9 +369,12 @@ impl TrustAnchorSource for TaSource {
                 }
             }
         }
+
         for n in name_vec {
             let r = self.get_trust_anchor_by_name(n);
+
             if r.is_ok() {
+                info!("Found trust anchor by name: {n}");
                 return r;
             }
         }

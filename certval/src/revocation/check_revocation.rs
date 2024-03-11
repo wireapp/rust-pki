@@ -206,10 +206,10 @@ pub async fn check_revocation(
                                 info!("Determined revocation status (revoked) using cached CRL for certificate issued to {}", cur_cert_subject);
                                 set_validation_status(cpr, revoked_error);
                                 return Err(Error::PathValidation(revoked_error));
-                            } else {
-                                add_failed_crl(cpr, crl.as_slice(), pos);
-                                info!("Failed to determine revocation status using cached CRL for certificate issued to {} with {}", cur_cert_subject, e);
                             }
+
+                            add_failed_crl(cpr, crl.as_slice(), pos);
+                            info!("Failed to determine revocation status using cached CRL for certificate issued to {} with {}", cur_cert_subject, e);
                         }
                     };
                 }
