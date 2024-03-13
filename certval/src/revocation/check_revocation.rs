@@ -320,6 +320,12 @@ pub fn check_revocation(
         // check revocation status cache
         let mut cur_status = pe.get_status(cur_cert, toi);
 
+        if CertificateRevoked == cur_status {
+            info!("Determined revocation status (revoked) using cached status for certificate issued to {}", cur_cert_subject);
+            set_validation_status(cpr, revoked_error);
+            return Err(Error::PathValidation(revoked_error));
+        }
+
         if let Ok(Some(PDVExtension::OcspNoCheck(_nc))) =
             ca_cert_ref.get_extension(&ID_PKIX_OCSP_NOCHECK)
         {
