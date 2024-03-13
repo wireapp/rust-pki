@@ -128,6 +128,8 @@ pub enum Error {
     /// Error encapsulates an error derived from [std::io::ErrorKind]
     #[cfg(feature = "std")]
     StdIoError(std::io::ErrorKind),
+    /// Failed to obtain lock guard
+    LockGuardError,
 }
 
 impl Error {
@@ -221,6 +223,7 @@ impl fmt::Display for Error {
             Error::ResourceUnchanged => write!(f, "ResourceUnchanged"),
             #[cfg(feature = "std")]
             Error::StdIoError(err) => write!(f, "StdError: {:?}", err),
+            &Error::LockGuardError => write!(f, "LockGuardError"),
         }
     }
 }

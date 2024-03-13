@@ -128,8 +128,6 @@ pub fn valid_at_time(
     }
 
     let nb = target.validity.not_before;
-    dbg!(toi.as_unix_secs());
-    dbg!(nb.to_unix_duration().as_secs());
     if nb > toi {
         if !stifle_log {
             log_error_for_name(&target.subject, "certificate is not yet valid, i.e., not_before is prior to the configured time of interest");
@@ -140,7 +138,6 @@ pub fn valid_at_time(
     }
 
     let na = target.validity.not_after;
-    dbg!(na.to_unix_duration().as_secs());
     if na < toi {
         if !stifle_log {
             log_error_for_name(

@@ -116,6 +116,22 @@ impl CrlSourceFolders {
         )
     }
 
+    fn read_all_crls(&self) -> Result<Vec<Vec<u8>>> {
+        let crl_info_guard = self.inner.read().map_err(|_| Error::LockGuardError)?;
+        let crl_info = crl_info_guard.crl_info.as_slice();
+        let mut retval = vec![];
+        for ci in crl_info.iter() {
+            let Some(filename) = &ci.filename else {
+                continue;
+            };
+
+            if let Ok(crl_buf) = get_file_as_byte_vec_pem(Path::new(filename.as_str())) {
+                retval.push(crl_buf);
+            }
+        }
+        Ok(retval)
+    }
+
     fn read_crl_at_index(&self, index: usize) -> Option<Vec<u8>> {
         let inner = self.inner.read().ok()?;
         let ci = &inner.crl_info[index];
@@ -259,6 +275,10 @@ impl CheckRemoteResource for RemoteStatus {
 }
 
 impl CrlSource for CrlSourceFolders {
+    fn get_all_crls(&self) -> Result<Vec<Vec<u8>>> {
+        self.read_all_crls()
+    }
+
     fn add_crl(&self, crl_buf: &[u8], crl: &CertificateList<Raw>, uri: &str) -> Result<()> {
         let mut cur_crl_info = get_crl_info(crl)?;
         let digest = Sha256::digest(uri).to_vec();

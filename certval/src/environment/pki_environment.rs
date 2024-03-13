@@ -410,6 +410,19 @@ impl PkiEnvironment {
         self.crl_sources.clear();
     }
 
+    /// Retrieves all the CRLs made available by the various [`CrlSource`] objects
+    pub fn get_all_crls(&self) -> Result<Vec<Vec<u8>>> {
+        let mut retval = vec![];
+        for f in &self.crl_sources {
+            let Ok(mut crls) = f.get_all_crls() else {
+                continue;
+            };
+            retval.append(&mut crls);
+        }
+        retval.dedup();
+        Ok(retval)
+    }
+
     /// Retrieves CRLs for given certificate from store
     pub fn get_crls(&self, cert: &PDVCertificate) -> Result<Vec<Vec<u8>>> {
         let mut retval = vec![];
