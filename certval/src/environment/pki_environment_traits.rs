@@ -149,6 +149,8 @@ pub enum CertificationPathBuilderFormats {
 
 /// The [`CrlSource`] trait defines the interface for storing and retrieving CRLs in support of certification path validation.
 pub trait CrlSource {
+    /// Lists all CRLs available
+    fn get_all_crls(&self) -> Result<Vec<Vec<u8>>>;
     /// Retrieves CRLs for given certificate from store
     fn get_crls(&self, cert: &PDVCertificate) -> Result<Vec<Vec<u8>>>;
     /// Adds a CRL to the store
