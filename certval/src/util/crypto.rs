@@ -250,6 +250,7 @@ pub fn verify_signature_message_rust_crypto(
         let hash_to_verify = match signature_alg.oid {
             PKIXALG_ECDSA_WITH_SHA256 => Sha256::digest(message_to_verify).to_vec(),
             PKIXALG_ECDSA_WITH_SHA384 => Sha384::digest(message_to_verify).to_vec(),
+            PKIXALG_ECDSA_WITH_SHA512 => Sha512::digest(message_to_verify).to_vec(),
             _ => {
                 error!(
                     "Unrecognized or unsupported signature algorithm: {}",
@@ -286,6 +287,9 @@ pub fn verify_signature_message_rust_crypto(
             }
             PKIXALG_SECP384R1 => {
                 verify_with_ecdsa!(p384)
+            }
+            PKIXALG_SECP521R1 => {
+                verify_with_ecdsa!(p521)
             }
             _ => {
                 error!("Unrecognized or unsupported named curve: {}", named_curve);
