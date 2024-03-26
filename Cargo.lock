@@ -281,6 +281,7 @@ dependencies = [
  "ndarray",
  "p256",
  "p384",
+ "p521",
  "pem-rfc7468 1.0.0-rc.1",
  "pkiprocmacros",
  "pqckeys",
@@ -1404,6 +1405,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "p521"
+version = "0.14.0-pre.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ec5d919bea930a34a522bb1c95a89f559925deab255db2c2ffa174fc48df664"
+dependencies = [
+ "base16ct",
+ "ecdsa",
+ "elliptic-curve",
+ "primefield",
+ "primeorder",
+ "sha2",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1712,6 +1727,12 @@ dependencies = [
  "env_logger",
  "log",
 ]
+
+[[package]]
+name = "primefield"
+version = "0.14.0-pre.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3f2ce0fa9cccdaf216230d151ce51a15298aef50ad76081a830128ecbc6428a"
 
 [[package]]
 name = "primeorder"
