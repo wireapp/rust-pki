@@ -30,7 +30,7 @@ pem-rfc7468 = { version="0.7.0", features = ["alloc"]}
 pkiprocmacros = { path = "../pkiprocmacros"}
 
 ecdsa = {version = "0.16.8", default-features = false, features = ["der"]}
-p256 = {version = "0.13.2", default-features = false, features = ["ecdsa", "ecdsa-core"]}
+p256 = {version = "0.13.2", default-features = false, features = ["ecdsa"]}
 p384 = {version = "0.13.0", default-features = false, features = ["ecdsa"]}
 p521 = {version = "0.13.0", default-features = false, features = ["ecdsa"]}
 ed25519-dalek = { version = "2", default-features = false, features = ["fast", "zeroize", "pkcs8"] }

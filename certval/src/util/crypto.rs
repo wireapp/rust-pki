@@ -63,7 +63,8 @@ pub(crate) fn is_rsa(oid: &ObjectIdentifier) -> bool {
 /// is_ecdsa returns true is the presented OID is one of [`PKIXALG_ECDSA_WITH_SHA224`],
 /// [`PKIXALG_ECDSA_WITH_SHA256`], [`PKIXALG_ECDSA_WITH_SHA384`] or [`PKIXALG_ECDSA_WITH_SHA512`] and false otherwise.
 pub(crate) fn is_ecdsa(oid: &ObjectIdentifier) -> bool {
-    *oid == PKIXALG_ECDSA_WITH_SHA256
+    *oid == PKIXALG_EC_PUBLIC_KEY
+        || *oid == PKIXALG_ECDSA_WITH_SHA256
         || *oid == PKIXALG_ECDSA_WITH_SHA384
         || *oid == PKIXALG_ECDSA_WITH_SHA224
         || *oid == PKIXALG_ECDSA_WITH_SHA512
@@ -247,6 +248,7 @@ pub fn verify_signature_message_rust_crypto(
         }
     } else if is_ecdsa(&signature_alg.oid) {
         let named_curve = get_named_curve_parameter(&spki.algorithm)?;
+
         let hash_to_verify = match signature_alg.oid {
             PKIXALG_ECDSA_WITH_SHA256 => Sha256::digest(message_to_verify).to_vec(),
             PKIXALG_ECDSA_WITH_SHA384 => Sha384::digest(message_to_verify).to_vec(),
