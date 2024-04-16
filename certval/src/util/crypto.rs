@@ -8,15 +8,13 @@ use log::{debug, error};
 #[cfg(feature = "pqc")]
 use der::Decode;
 use der::{asn1::ObjectIdentifier, AnyRef, Encode};
-use rsa::pkcs8::DecodePublicKey;
-use rsa::{Pkcs1v15Sign, RsaPublicKey};
+
 use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
 use spki::{AlgorithmIdentifierOwned, SubjectPublicKeyInfoOwned};
 
 use crate::util::error::{Error, PathValidationStatus, Result};
 use crate::{
     environment::pki_environment::*, util::pdv_alg_oids::*,
-    util::pdv_utilities::get_hash_alg_from_sig_alg,
 };
 
 #[cfg(feature = "pqc")]
@@ -40,12 +38,13 @@ use pqcrypto_traits::sign::{DetachedSignature, PublicKey as OtherPublicKey};
 /// At present, only the PKCS1v15Sign passing scheme is supported, relative to the
 /// [`PKIXALG_SHA224_WITH_RSA_ENCRYPTION`], [`PKIXALG_SHA256_WITH_RSA_ENCRYPTION`],
 /// [`PKIXALG_SHA384_WITH_RSA_ENCRYPTION`] and [`PKIXALG_SHA512_WITH_RSA_ENCRYPTION`] algorithm identifiers.
-pub fn get_padding_scheme(signature_alg: &AlgorithmIdentifierOwned) -> Result<Pkcs1v15Sign> {
+#[cfg(feature = "rsa")]
+pub fn get_padding_scheme(signature_alg: &AlgorithmIdentifierOwned) -> Result<rsa::Pkcs1v15Sign> {
     match signature_alg.oid {
-        PKIXALG_SHA256_WITH_RSA_ENCRYPTION => Ok(Pkcs1v15Sign::new::<Sha256>()),
-        PKIXALG_SHA384_WITH_RSA_ENCRYPTION => Ok(Pkcs1v15Sign::new::<Sha384>()),
-        PKIXALG_SHA224_WITH_RSA_ENCRYPTION => Ok(Pkcs1v15Sign::new::<Sha224>()),
-        PKIXALG_SHA512_WITH_RSA_ENCRYPTION => Ok(Pkcs1v15Sign::new::<Sha512>()),
+        PKIXALG_SHA256_WITH_RSA_ENCRYPTION => Ok(rsa::Pkcs1v15Sign::new::<Sha256>()),
+        PKIXALG_SHA384_WITH_RSA_ENCRYPTION => Ok(rsa::Pkcs1v15Sign::new::<Sha384>()),
+        PKIXALG_SHA224_WITH_RSA_ENCRYPTION => Ok(rsa::Pkcs1v15Sign::new::<Sha224>()),
+        PKIXALG_SHA512_WITH_RSA_ENCRYPTION => Ok(rsa::Pkcs1v15Sign::new::<Sha512>()),
         _ => Err(Error::Unrecognized),
     }
 }
@@ -93,30 +92,37 @@ pub(crate) fn is_ml_dsa_87_ipd(oid: &ObjectIdentifier) -> bool {
 pub(crate) fn is_falcon512(oid: &ObjectIdentifier) -> bool {
     *oid == OQ_FALCON_512
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_falcon1024(oid: &ObjectIdentifier) -> bool {
     *oid == OQ_FALCON_1024
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_128f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_128F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_128s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_128S_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_192f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_192F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_192s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_192S_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_256f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_256F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_sha2_256s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHA2_256S_IPD
@@ -126,22 +132,27 @@ pub(crate) fn is_slh_dsa_sha2_256s_ipd(oid: &ObjectIdentifier) -> bool {
 pub(crate) fn is_slh_dsa_shake_128f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_128F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_shake_128s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_128S_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_shake_192f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_192F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_shake_192s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_192S_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_shake_256f_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_256F_IPD
 }
+
 #[cfg(feature = "pqc")]
 pub(crate) fn is_slh_dsa_shake_256s_ipd(oid: &ObjectIdentifier) -> bool {
     *oid == SLH_DSA_SHAKE_256S_IPD
@@ -181,6 +192,7 @@ pub fn calculate_hash_rust_crypto(
 /// implementations from the [Rust Crypto](https://github.com/RustCrypto) project.
 ///
 /// Only RSA is supported by this function. To verify ECDSA signatures, use [`verify_signature_message_rust_crypto`].
+#[allow(unused_variables)]
 pub fn verify_signature_digest_rust_crypto(
     _pe: &PkiEnvironment,
     hash_to_verify: &[u8],                    // buffer to verify
@@ -189,8 +201,10 @@ pub fn verify_signature_digest_rust_crypto(
     spki: &SubjectPublicKeyInfoOwned,         // public key
 ) -> Result<()> {
     if let Ok(enc_spki) = spki.to_der() {
+        #[cfg(feature = "rsa")]
         if is_rsa(&signature_alg.oid) {
-            let rsa = RsaPublicKey::from_public_key_der(&enc_spki);
+            use rsa::pkcs8::DecodePublicKey as _;
+            let rsa = rsa::RsaPublicKey::from_public_key_der(&enc_spki);
             if let Ok(rsa) = rsa {
                 let ps = get_padding_scheme(signature_alg)?;
                 let x = rsa.verify(ps, hash_to_verify, signature);
@@ -225,6 +239,7 @@ fn get_named_curve_parameter(alg_id: &AlgorithmIdentifierOwned) -> Result<Object
 /// implementations from the [Rust Crypto](https://github.com/RustCrypto) project.
 ///
 /// RSA, P256, and P384 signatures are supported at present.
+#[allow(unused_variables)]
 pub fn verify_signature_message_rust_crypto(
     pe: &PkiEnvironment,
     message_to_verify: &[u8],                 // buffer to verify
@@ -233,10 +248,12 @@ pub fn verify_signature_message_rust_crypto(
     spki: &SubjectPublicKeyInfoOwned,         // public key
 ) -> Result<()> {
     if is_rsa(&signature_alg.oid) {
+        #[cfg(feature = "rsa")]
         if let Ok(enc_spki) = spki.to_der() {
-            let rsa = RsaPublicKey::from_public_key_der(&enc_spki);
+            use rsa::pkcs8::DecodePublicKey as _;
+            let rsa = rsa::RsaPublicKey::from_public_key_der(&enc_spki);
             if let Ok(rsa) = rsa {
-                let hash_alg = get_hash_alg_from_sig_alg(&signature_alg.oid)?;
+                let hash_alg = crate::util::get_hash_alg_from_sig_alg(&signature_alg.oid)?;
                 let hash_to_verify = calculate_hash_rust_crypto(pe, &hash_alg, message_to_verify)?;
                 let ps = get_padding_scheme(signature_alg)?;
                 return rsa
@@ -301,10 +318,10 @@ pub fn verify_signature_message_rust_crypto(
     } else if is_eddsa(&signature_alg.oid) {
         let Ok(verifying_key) =
             ed25519_dalek::VerifyingKey::try_from(spki.subject_public_key.raw_bytes())
-        else {
-            error!("Could not decode verifying key");
-            return Err(Error::PathValidation(PathValidationStatus::EncodingError));
-        };
+            else {
+                error!("Could not decode verifying key");
+                return Err(Error::PathValidation(PathValidationStatus::EncodingError));
+            };
         let Ok(s) = ed25519_dalek::Signature::from_slice(signature) else {
             error!("Could not decode signature");
             return Err(Error::PathValidation(PathValidationStatus::EncodingError));
@@ -320,14 +337,17 @@ pub fn verify_signature_message_rust_crypto(
     debug!("Unrecognized signature algorithm: {}", signature_alg.oid);
     Err(Error::Unrecognized)
 }
+
 #[cfg(feature = "pqc")]
 fn is_explicit_composite(oid: ObjectIdentifier) -> bool {
     ENTU_DILITHIUM3_ECDSA_P256 == oid
 }
+
 #[cfg(feature = "pqc")]
 fn is_generic_composite(oid: ObjectIdentifier) -> bool {
     ENTU_COMPOSITE_SIG == oid
 }
+
 #[cfg(feature = "pqc")]
 fn is_composite(oid: ObjectIdentifier) -> bool {
     is_explicit_composite(oid) || is_generic_composite(oid)
@@ -637,6 +657,7 @@ fn test_calculate_hash() {
         hex!("BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD")
     );
 }
+
 #[test]
 fn test_verify_signature_digest() {
     use crate::{DeferDecodeSigned, PkiEnvironment};
