@@ -13,9 +13,7 @@ use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
 use spki::{AlgorithmIdentifierOwned, SubjectPublicKeyInfoOwned};
 
 use crate::util::error::{Error, PathValidationStatus, Result};
-use crate::{
-    environment::pki_environment::*, util::pdv_alg_oids::*,
-};
+use crate::{environment::pki_environment::*, util::pdv_alg_oids::*};
 
 #[cfg(feature = "pqc")]
 use pqckeys::composite::*;
@@ -317,10 +315,10 @@ pub fn verify_signature_message_rust_crypto(
     } else if is_eddsa(&signature_alg.oid) {
         let Ok(verifying_key) =
             ed25519_dalek::VerifyingKey::try_from(spki.subject_public_key.raw_bytes())
-            else {
-                error!("Could not decode verifying key");
-                return Err(Error::PathValidation(PathValidationStatus::EncodingError));
-            };
+        else {
+            error!("Could not decode verifying key");
+            return Err(Error::PathValidation(PathValidationStatus::EncodingError));
+        };
         let Ok(s) = ed25519_dalek::Signature::from_slice(signature) else {
             error!("Could not decode signature");
             return Err(Error::PathValidation(PathValidationStatus::EncodingError));
@@ -658,6 +656,7 @@ fn test_calculate_hash() {
 }
 
 #[test]
+#[cfg(feature = "rsa")]
 fn test_verify_signature_digest() {
     use crate::{DeferDecodeSigned, PkiEnvironment};
     use der::Decode;

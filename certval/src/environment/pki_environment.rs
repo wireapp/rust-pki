@@ -230,9 +230,8 @@ impl PkiEnvironment {
         spki: &SubjectPublicKeyInfoOwned,         // public key
     ) -> Result<()> {
         for f in &self.verify_signature_digest_callbacks {
-            let r = f(pe, hash_to_verify, signature, signature_alg, spki);
-            if let Ok(r) = r {
-                return Ok(r);
+            if f(pe, hash_to_verify, signature, signature_alg, spki).is_ok() {
+                return Ok(());
             }
         }
         Err(Error::Unrecognized)
