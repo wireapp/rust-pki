@@ -546,7 +546,7 @@ pub(crate) fn get_crl_info(crl: &CertificateList) -> Result<CrlInfo> {
                             }
                             if idp_name.is_none() {
                                 // not supporting non-DN/URI DPs
-                                return Err(Error::Unrecognized.into());
+                                return Err(Error::Unrecognized);
                             }
                         }
                         Some(DistributionPointName::NameRelativeToCRLIssuer(_unsupported)) => {
