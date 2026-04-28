@@ -1241,133 +1241,120 @@ impl CertSource {
         pass: u8,
         partial_paths: &mut Vec<BTreeMap<String, Vec<Vec<usize>>>>,
     ) {
+        macro_rules! or_continue {
+            ($pattern:pat = $e:expr) => {
+                let $pattern = $e else {
+                    continue;
+                };
+            };
+        }
+
         // Instantiate a map that will aggregate paths built relative to the 0th or pass-1 row in
         // self.buffers_and_paths.partial_paths, if any.
         let mut new_additions: BTreeMap<String, Vec<Vec<usize>>> = BTreeMap::new();
 
         // iterate over all certs in the self.certs vector.
-        for (cur_cert_index, cur_cert) in self.certs.iter().enumerate() {
+        for (cur_cert_index, cur_cert) in self
+            .certs
+            .iter()
+            .enumerate()
             // skip over elements that don't have a cert (these correspond to buffers in
             // self.buffers_and_paths.buffers that could not be parsed when self.certs was prepared.
-            if let Some(cur_cert) = cur_cert {
-                let cur_cert_hex_skid = hex_skid_from_cert(cur_cert);
-                if 0 == pass {
-                    let ta = pe.get_trust_anchor_for_target(cur_cert);
-                    if let Ok(ta) = ta {
-                        // RFC 5914 TAs do not necessary have to have a name, if this is one of those, ignore it
-                        let ta_name = get_trust_anchor_name(&ta.decoded_ta);
-                        if let Ok(ta_name) = ta_name {
-                            if compare_names(&cur_cert.decoded_cert.tbs_certificate.issuer, ta_name)
-                            {
-                                let defer_cert =
-                                    DeferDecodeSigned::from_der(cur_cert.encoded_cert.as_slice());
-                                if let Ok(defer_cert) = defer_cert {
-                                    let spki = get_subject_public_key_info_from_trust_anchor(
-                                        &ta.decoded_ta,
-                                    );
-                                    let r = pe.verify_signature_message(
-                                        pe,
-                                        &defer_cert.tbs_field,
-                                        cur_cert.decoded_cert.signature.raw_bytes(),
-                                        &cur_cert.decoded_cert.tbs_certificate.signature,
-                                        spki,
-                                    );
-                                    if let Ok(_r) = r {
-                                        let new_path = vec![cur_cert_index];
-                                        if new_additions.contains_key(&cur_cert_hex_skid) {
-                                            if !new_additions[&cur_cert_hex_skid]
-                                                .contains(&new_path)
-                                            {
-                                                let mut v =
-                                                    new_additions[&cur_cert_hex_skid].clone();
-                                                v.push(new_path);
-                                                new_additions.insert(cur_cert_hex_skid.clone(), v);
-                                            }
-                                        } else {
-                                            new_additions
-                                                .insert(cur_cert_hex_skid.clone(), vec![new_path]);
-                                        }
-                                    }
-                                }
-                            }
+            .filter_map(|(idx, cur_cert)| cur_cert.as_ref().map(|cur_cert| (idx, cur_cert)))
+        {
+            let cur_cert_hex_skid = hex_skid_from_cert(cur_cert);
+            if pass == 0 {
+                or_continue!(Ok(ta) = pe.get_trust_anchor_for_target(cur_cert));
+                // RFC 5914 TAs do not necessary have to have a name, if this is one of those, ignore it
+                or_continue!(Ok(ta_name) = get_trust_anchor_name(&ta.decoded_ta));
+
+                if !compare_names(&cur_cert.decoded_cert.tbs_certificate.issuer, ta_name) {
+                    continue;
+                }
+
+                or_continue!(
+                    Ok(defer_cert) = DeferDecodeSigned::from_der(cur_cert.encoded_cert.as_slice())
+                );
+
+                let spki = get_subject_public_key_info_from_trust_anchor(&ta.decoded_ta);
+                or_continue!(
+                    Ok(_) = pe.verify_signature_message(
+                        pe,
+                        &defer_cert.tbs_field,
+                        cur_cert.decoded_cert.signature.raw_bytes(),
+                        &cur_cert.decoded_cert.tbs_certificate.signature,
+                        spki,
+                    )
+                );
+
+                let new_path = vec![cur_cert_index];
+                let paths = new_additions.entry(cur_cert_hex_skid.clone()).or_default();
+                if !paths.contains(&new_path) {
+                    paths.push(new_path);
+                }
+            } else {
+                or_continue!(
+                    Ok(defer_cert) = DeferDecodeSigned::from_der(cur_cert.encoded_cert.as_slice())
+                );
+
+                // look for matches in map from previous row of partial_paths
+                let last_row = &partial_paths[(pass - 1) as usize];
+
+                // get list of SKIDs for possible issuers (based on AKID and name lookups)
+                let prospective_issuers = self.find_prospective_issuers(&cur_cert);
+                for prospective_path in prospective_issuers
+                    .into_iter()
+                    .filter_map(|prospective_issuer| last_row.get(&prospective_issuer))
+                    .flatten()
+                {
+                    //log_message(&PeLogLevels::PeDebug, format!("LAST ROW FOR PASS #{} {:?}", pass, last_row.keys()).as_str());
+
+                    or_continue!(
+                        Some(prospective_ca_cert) = prospective_path
+                            .last()
+                            .and_then(|&cert_idx| self.certs.get(cert_idx).map(Option::as_ref))
+                            .flatten()
+                    );
+
+                    // should path settings be used more generally than time of interest?
+                    // Not doing that at present because policy and name constraints
+                    // are more variable than use of current time as time of interest
+                    if self.get_operative_path_len_constraint(prospective_path) == 0
+                        || !(compare_names(
+                            &cur_cert.decoded_cert.tbs_certificate.issuer,
+                            &prospective_ca_cert.decoded_cert.tbs_certificate.subject,
+                        ) && self.check_names_in_partial_path(prospective_path)
+                            && self.check_validity_in_partial_path(prospective_path, cps))
+                    {
+                        continue;
+                    }
+
+                    or_continue!(
+                        Ok(_) = pe.verify_signature_message(
+                            pe,
+                            &defer_cert.tbs_field,
+                            cur_cert.decoded_cert.signature.raw_bytes(),
+                            &cur_cert.decoded_cert.tbs_certificate.signature,
+                            &prospective_ca_cert
+                                .decoded_cert
+                                .tbs_certificate
+                                .subject_public_key_info,
+                        )
+                    );
+
+                    if !self.pub_key_in_path(&cur_cert, prospective_path) {
+                        let mut new_path = prospective_path.clone();
+                        new_path.push(cur_cert_index);
+
+                        let paths = new_additions.entry(cur_cert_hex_skid.clone()).or_default();
+                        if !paths.contains(&new_path) {
+                            paths.push(new_path);
                         }
                     }
-                } else {
-                    let defer_cert = DeferDecodeSigned::from_der(cur_cert.encoded_cert.as_slice());
-                    if let Ok(defer_cert) = defer_cert {
-                        // look for matches in map from previous row of partial_paths
-                        let last_row = &partial_paths[(pass - 1) as usize];
-
-                        // get list of SKIDs for possible issuers (based on AKID and name lookups)
-                        let prospective_issuers = self.find_prospective_issuers(cur_cert);
-                        for k in prospective_issuers {
-                            //log_message(&PeLogLevels::PeDebug, format!("LAST ROW FOR PASS #{} {:?}", pass, last_row.keys()).as_str());
-                            if !last_row.contains_key(&k) {
-                                continue;
-                            }
-                            let prospective_paths = &last_row[&k];
-                            for prospective_path in prospective_paths {
-                                let prospective_ca_cert =
-                                    &self.certs[prospective_path[prospective_path.len() - 1]];
-                                if let Some(prospective_ca_cert) = prospective_ca_cert {
-                                    if 0 == self.get_operative_path_len_constraint(prospective_path)
-                                    {
-                                        continue;
-                                    }
-
-                                    // should path settings be used more generally than time of interest?
-                                    // Not doing that at present because policy and name constraints
-                                    // are more variable than use of current time as time of interest
-                                    if compare_names(
-                                        &cur_cert.decoded_cert.tbs_certificate.issuer,
-                                        &prospective_ca_cert.decoded_cert.tbs_certificate.subject,
-                                    ) && self.check_names_in_partial_path(prospective_path)
-                                        && self
-                                            .check_validity_in_partial_path(prospective_path, cps)
-                                    {
-                                        let r = pe.verify_signature_message(
-                                            pe,
-                                            &defer_cert.tbs_field,
-                                            cur_cert.decoded_cert.signature.raw_bytes(),
-                                            &cur_cert.decoded_cert.tbs_certificate.signature,
-                                            &prospective_ca_cert
-                                                .decoded_cert
-                                                .tbs_certificate
-                                                .subject_public_key_info,
-                                        );
-                                        if let Ok(_r) = r {
-                                            if !self.pub_key_in_path(cur_cert, prospective_path) {
-                                                let mut new_path = prospective_path.clone();
-                                                new_path.push(cur_cert_index);
-                                                if new_additions
-                                                    .contains_key(&cur_cert_hex_skid.clone())
-                                                {
-                                                    if !new_additions[&cur_cert_hex_skid]
-                                                        .contains(&new_path)
-                                                    {
-                                                        let mut v = new_additions
-                                                            [&cur_cert_hex_skid]
-                                                            .clone();
-                                                        v.push(new_path);
-                                                        new_additions
-                                                            .insert(cur_cert_hex_skid.clone(), v);
-                                                    }
-                                                } else {
-                                                    new_additions.insert(
-                                                        cur_cert_hex_skid.clone(),
-                                                        vec![new_path],
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    } // end compare_names
-                                }
-                            }
-                        }
-                    }
-                } // end if 0 == pass {
-            } // end if let Some(cur_cert) = cur_cert {
+                }
+            } // end if 0 == pass {
         }
+
         if !new_additions.is_empty() {
             // error!("NEW ADDITIONS FOR PASS #{}: {:?}", pass, new_additions);
             partial_paths.push(new_additions);
