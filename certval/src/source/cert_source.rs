@@ -71,6 +71,14 @@ use ciborium::from_reader;
 
 use std::sync::{Arc, RwLock};
 
+macro_rules! or_continue {
+    ($pattern:pat = $e:expr) => {
+        let $pattern = $e else {
+            continue;
+        };
+    };
+}
+
 /// The CertFile struct associates a string, notionally containing a filename or URI, with a vector
 /// of bytes. The vector of bytes is assumed to contain a binary DER encoded certificate.
 #[derive(Clone, Serialize, Deserialize)]
@@ -1241,14 +1249,6 @@ impl CertSource {
         pass: u8,
         partial_paths: &mut Vec<BTreeMap<String, Vec<Vec<usize>>>>,
     ) {
-        macro_rules! or_continue {
-            ($pattern:pat = $e:expr) => {
-                let $pattern = $e else {
-                    continue;
-                };
-            };
-        }
-
         // Instantiate a map that will aggregate paths built relative to the 0th or pass-1 row in
         // self.buffers_and_paths.partial_paths, if any.
         let mut new_additions: BTreeMap<String, Vec<Vec<usize>>> = BTreeMap::new();
@@ -1377,22 +1377,21 @@ impl CertificateSource for CertSource {
         threshold: usize,
         time_of_interest: u64,
     ) -> Result<()> {
-        if let Err(e) = valid_at_time(&target.decoded_cert.tbs_certificate, time_of_interest, true)
-        {
-            error!(
-                "No paths found because target is not valid at indicated time of interest ({})",
-                time_of_interest
-            );
-            return Err(e);
-        }
+        valid_at_time(&target.decoded_cert.tbs_certificate, time_of_interest, true).inspect_err(
+            |_| {
+                error!(
+                    "No paths found because target is not valid at indicated time of interest ({})",
+                    time_of_interest
+                )
+            },
+        )?;
 
-        let ta = pe.get_trust_anchor_for_target(target);
-        if let Ok(ta) = ta {
+        if let Ok(ta) = pe.get_trust_anchor_for_target(target) {
             let path = CertificationPath::new(ta.clone(), vec![], target.clone());
             paths.push(path);
         }
 
-        let mut akid_hex = "".to_string();
+        let mut akid_hex = String::new();
         let mut name_vec = vec![&target.decoded_cert.tbs_certificate.issuer];
         let akid_ext = target.get_extension(&ID_CE_AUTHORITY_KEY_IDENTIFIER);
         if let Ok(Some(PDVExtension::AuthorityKeyIdentifier(akid))) = akid_ext {
@@ -1412,132 +1411,123 @@ impl CertificateSource for CertSource {
         let mut ii = 0;
         while ii < 2 {
             ii += 1;
-            if !akid_hex.is_empty() {
-                let partial_paths = if let Ok(g) = self.buffers_and_paths.partial_paths.read() {
-                    g
-                } else {
-                    return Err(Error::Unrecognized);
-                };
-
-                for p in partial_paths.iter() {
-                    if p.contains_key(&akid_hex) {
-                        let indices_vec = &p[&akid_hex];
-                        for indices in indices_vec {
-                            if !above_threshold(indices, threshold) {
-                                continue;
-                            }
-
-                            // This block accounts for CAs that use different names for same SKID. Could add name constraints check here too, maybe.
-                            let last_index = if let Some(li) = indices.last() {
-                                li
-                            } else {
-                                continue;
-                            };
-                            let issuer = &self.certs[*last_index];
-                            if let Some(ca) = issuer {
-                                if !compare_names(
-                                    &ca.decoded_cert.tbs_certificate.subject,
-                                    &target.decoded_cert.tbs_certificate.issuer,
-                                ) {
-                                    error!("Encountered CA that is likely using same SKID with different names. Skipping partial path due to name mismatch.");
-                                    continue;
-                                }
-                            }
-
-                            let mut ta = None;
-                            let mut intermediates = vec![];
-                            let mut found_blank = false;
-                            for (i, index) in indices.iter().enumerate() {
-                                if let Some(cert) = &self.certs[*index] {
-                                    intermediates.push(cert.clone());
-                                    if 0 == i {
-                                        let mut ta_akid_hex = "".to_string();
-                                        let mut ta_name_vec =
-                                            vec![&target.decoded_cert.tbs_certificate.issuer];
-                                        let ca_akid_ext =
-                                            cert.get_extension(&ID_CE_AUTHORITY_KEY_IDENTIFIER);
-                                        if let Ok(Some(PDVExtension::AuthorityKeyIdentifier(
-                                            ca_akid,
-                                        ))) = ca_akid_ext
-                                        {
-                                            if let Some(ca_kid) = &ca_akid.key_identifier {
-                                                ta_akid_hex = buffer_to_hex(ca_kid.as_bytes());
-                                            } else if let Some(names) =
-                                                &ca_akid.authority_cert_issuer
-                                            {
-                                                for n in names {
-                                                    if let GeneralName::DirectoryName(dn) = n {
-                                                        ta_name_vec.push(dn);
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if !ta_akid_hex.is_empty() {
-                                            if let Ok(new_ta) =
-                                                pe.get_trust_anchor_by_hex_skid(&ta_akid_hex)
-                                            {
-                                                ta = Some(new_ta);
-                                            }
-                                        } else {
-                                            let fname = get_filename_from_cert_metadata(cert);
-                                            error!("Missing AKID for trust anchor - {}", fname);
-                                            if let Ok(new_ta) = pe.get_trust_anchor_for_target(cert)
-                                            {
-                                                error!("Found trust anchor by name");
-                                                ta = Some(new_ta);
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // some cert slots are empty (due to parse or validity error). skip those.
-                                    found_blank = true;
-                                    break;
-                                }
-                            }
-                            if !found_blank {
-                                if let Some(ta) = ta {
-                                    let path = CertificationPath::new(
-                                        ta.clone(),
-                                        intermediates,
-                                        target.clone(),
-                                    );
-                                    if !pub_key_repeats(&path) {
-                                        ii = 2;
-                                        paths.push(path);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
+            if akid_hex.is_empty() {
                 let fname = get_filename_from_cert_metadata(target);
                 error!(
                     "Missing AKID in target and failed to find by name - {}",
                     fname
                 );
+            } else {
+                let partial_paths = self
+                    .buffers_and_paths
+                    .partial_paths
+                    .read()
+                    .map_err(|_| Error::Unrecognized)?;
+
+                for indices in partial_paths
+                    .iter()
+                    .filter_map(|partial| partial.get(&akid_hex))
+                    .flatten()
+                {
+                    if !above_threshold(indices, threshold) {
+                        continue;
+                    }
+
+                    // This block accounts for CAs that use different names for same SKID. Could add name constraints check here too, maybe.
+                    or_continue!(Some(last_index) = indices.last().copied());
+                    if let Some(ca) = &self.certs[last_index] {
+                        if !compare_names(
+                            &ca.decoded_cert.tbs_certificate.subject,
+                            &target.decoded_cert.tbs_certificate.issuer,
+                        ) {
+                            error!("Encountered CA that is likely using same SKID with different names. Skipping partial path due to name mismatch.");
+                            continue;
+                        }
+                    }
+
+                    let mut ta = None;
+                    let mut found_blank = false;
+
+                    let intermediates = indices
+                        .iter()
+                        .copied()
+                        .map_while(|index| {
+                            let maybe_cert = &self.certs[index];
+                            if maybe_cert.is_none() {
+                                found_blank = true;
+                            }
+                            maybe_cert.clone()
+                        })
+                        .collect::<Vec<_>>();
+
+                    if let Some(cert) = intermediates.first() {
+                        let mut ta_akid_hex = "".to_string();
+                        let mut ta_name_vec = vec![&target.decoded_cert.tbs_certificate.issuer];
+
+                        if let Ok(Some(PDVExtension::AuthorityKeyIdentifier(ca_akid))) =
+                            cert.get_extension(&ID_CE_AUTHORITY_KEY_IDENTIFIER)
+                        {
+                            if let Some(ca_kid) = &ca_akid.key_identifier {
+                                ta_akid_hex = buffer_to_hex(ca_kid.as_bytes());
+                            } else if let Some(names) = &ca_akid.authority_cert_issuer {
+                                for n in names {
+                                    if let GeneralName::DirectoryName(dn) = n {
+                                        ta_name_vec.push(dn);
+                                    }
+                                }
+                            }
+                        }
+
+                        if !ta_akid_hex.is_empty() {
+                            ta = pe.get_trust_anchor_by_hex_skid(&ta_akid_hex).ok();
+                        } else {
+                            let fname = get_filename_from_cert_metadata(cert);
+                            error!("Missing AKID for trust anchor - {}", fname);
+                            ta = pe
+                                .get_trust_anchor_for_target(cert)
+                                .ok()
+                                .inspect(|_| error!("Found trust anchor by name"));
+                        }
+                    }
+
+                    if !found_blank {
+                        if let Some(ta) = ta {
+                            let path =
+                                CertificationPath::new(ta.clone(), intermediates, target.clone());
+                            if !pub_key_repeats(&path) {
+                                ii = 2;
+                                paths.push(path);
+                            }
+                        }
+                    }
+                }
             }
 
             if akid_hex.is_empty() || paths_count == paths.len() {
                 // try to use name map to find AKID
                 let mut changed = false;
-                for n in &name_vec {
-                    let name_str = name_to_string(n);
-                    if self.name_map.contains_key(&name_str) {
-                        for i in &self.name_map[&name_str] {
-                            if let Some(cert) = &self.certs[*i] {
-                                let skid = hex_skid_from_cert(cert);
-                                if !skid.is_empty() {
-                                    debug!(
-                                        "Using calculated key identifier in lieu of AKID for {}",
-                                        name_str
-                                    );
-                                    akid_hex = skid;
-                                    changed = true;
-                                    break;
-                                }
-                            }
+                for name_str in name_vec.iter().map(|name| name_to_string(name)) {
+                    for cert in self
+                        .name_map
+                        .get(&name_str)
+                        .into_iter()
+                        .flatten()
+                        .copied()
+                        .filter_map(|cert_idx| {
+                            self.certs.get(cert_idx).map(Option::as_ref).flatten()
+                        })
+                    {
+                        let skid = hex_skid_from_cert(cert);
+                        if !skid.is_empty() {
+                            debug!(
+                                "Using calculated key identifier in lieu of AKID for {}",
+                                name_str
+                            );
+                            akid_hex = skid;
+                            changed = true;
+                            // this preserves existing behavior but we might actually prefer to
+                            // break the outer loop instead of the inner
+                            break;
                         }
                     }
                 }
