@@ -273,14 +273,8 @@ pub fn check_names(
     // Read input variables from path settings
     let mut pbufs = BTreeMap::new();
     let mut ebufs = BTreeMap::new();
-    let initial_perm = match get_initial_permitted_subtrees_as_set(cps, &mut pbufs) {
-        Ok(ip) => ip,
-        Err(e) => return Err(e),
-    };
-    let initial_excl = match get_initial_excluded_subtrees_as_set(cps, &mut ebufs) {
-        Ok(ie) => ie,
-        Err(e) => return Err(e),
-    };
+    let initial_perm = get_initial_permitted_subtrees_as_set(cps, &mut pbufs)?;
+    let initial_excl = get_initial_excluded_subtrees_as_set(cps, &mut ebufs)?;
 
     // for convenience, combine target into array with the intermediate CA certs
     let mut v = cp.intermediates.clone();
@@ -650,12 +644,9 @@ pub fn enforce_trust_anchor_constraints(
                 if let PDVExtension::NameConstraints(nc) = nc {
                     if let Some(permitted) = &nc.permitted_subtrees {
                         let mut initial_perm =
-                            match get_initial_permitted_subtrees_with_default_as_set(
+                            get_initial_permitted_subtrees_with_default_as_set(
                                 cps, &mut pbufs,
-                            ) {
-                                Ok(ip) => ip,
-                                Err(e) => return Err(e),
-                            };
+                            )?;
                         initial_perm.calculate_union(permitted);
                         set_initial_permitted_subtrees_from_set(&mut mod_cps, &initial_perm);
                     }
@@ -667,10 +658,7 @@ pub fn enforce_trust_anchor_constraints(
         if let Some(PDVExtension::NameConstraints(nc)) = name_constraints {
             if let Some(excluded) = &nc.excluded_subtrees {
                 let mut initial_excl =
-                    match get_initial_excluded_subtrees_with_default_as_set(cps, &mut ebufs) {
-                        Ok(ie) => ie,
-                        Err(e) => return Err(e),
-                    };
+                    get_initial_excluded_subtrees_with_default_as_set(cps, &mut ebufs)?;
                 initial_excl.calculate_union(excluded);
                 set_initial_excluded_subtrees_from_set(&mut mod_cps, &initial_excl);
             }

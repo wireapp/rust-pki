@@ -74,19 +74,19 @@ pub struct PkiEnvironment {
     //Storage and retrieval interfaces
     //--------------------------------------------------------------------------
     /// List of trait objects that provide access to trust anchors
-    trust_anchor_sources: Vec<Box<(dyn TrustAnchorSource + Send + Sync)>>,
+    trust_anchor_sources: Vec<Box<dyn TrustAnchorSource + Send + Sync>>,
 
     /// List of trait objects that provide access to certificates
-    certificate_sources: Vec<Box<(dyn CertificateSource + Send + Sync)>>,
+    certificate_sources: Vec<Box<dyn CertificateSource + Send + Sync>>,
 
     /// List of trait objects that provide access to CRLs
-    crl_sources: Vec<Box<(dyn CrlSource + Send + Sync)>>,
+    crl_sources: Vec<Box<dyn CrlSource + Send + Sync>>,
 
     /// List of trait objects that provide access to cached revocation status determinations
-    revocation_cache: Vec<Box<(dyn RevocationStatusCache + Send + Sync)>>,
+    revocation_cache: Vec<Box<dyn RevocationStatusCache + Send + Sync>>,
 
     /// List of trait objects that provide access to blocklist and last modified info
-    check_remote: Vec<Box<(dyn CheckRemoteResource + Send + Sync)>>,
+    check_remote: Vec<Box<dyn CheckRemoteResource + Send + Sync>>,
 
     //--------------------------------------------------------------------------
     //Miscellaneous interfaces
@@ -268,7 +268,7 @@ impl PkiEnvironment {
     }
 
     /// add_trust_anchor_source adds a [`TrustAnchorSource`] object to the list used by get_trust_anchor.
-    pub fn add_trust_anchor_source(&mut self, c: Box<(dyn TrustAnchorSource + Send + Sync)>) {
+    pub fn add_trust_anchor_source(&mut self, c: Box<dyn TrustAnchorSource + Send + Sync>) {
         self.trust_anchor_sources.push(c);
     }
 
@@ -366,7 +366,7 @@ impl PkiEnvironment {
     }
 
     /// add_certificate_source adds a [`CertificateSource`] object to the list.
-    pub fn add_certificate_source(&mut self, c: Box<(dyn CertificateSource + Send + Sync)>) {
+    pub fn add_certificate_source(&mut self, c: Box<dyn CertificateSource + Send + Sync>) {
         self.certificate_sources.push(c);
     }
 
@@ -398,7 +398,7 @@ impl PkiEnvironment {
     }
 
     /// add_crl_source adds a [`CrlSource`] object to the list.
-    pub fn add_crl_source(&mut self, c: Box<(dyn CrlSource + Send + Sync)>) {
+    pub fn add_crl_source(&mut self, c: Box<dyn CrlSource + Send + Sync>) {
         self.crl_sources.push(c);
     }
 
@@ -451,7 +451,7 @@ impl PkiEnvironment {
     }
 
     /// add_revocation_cache adds a [`RevocationStatusCache`] object to the list.
-    pub fn add_revocation_cache(&mut self, c: Box<(dyn RevocationStatusCache + Send + Sync)>) {
+    pub fn add_revocation_cache(&mut self, c: Box<dyn RevocationStatusCache + Send + Sync>) {
         self.revocation_cache.push(c);
     }
 
@@ -525,7 +525,7 @@ impl PkiEnvironment {
     }
 
     /// add_check_remote adds a [`CheckRemoteResource`] object to the list.
-    pub fn add_check_remote(&mut self, c: Box<(dyn CheckRemoteResource + Send + Sync)>) {
+    pub fn add_check_remote(&mut self, c: Box<dyn CheckRemoteResource + Send + Sync>) {
         self.check_remote.push(c);
     }
 
